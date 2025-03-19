@@ -1,6 +1,6 @@
 package com.example.dz_oop
 
-class Disk(id: Int, available: Boolean, name: String, val diskType: String) :
+class Disk(id: Int, available: Boolean, name: String, private val diskType: String) :
     LibraryItem(id, available, name) {
 
     override fun getDetailedInfo(): String {

@@ -1,6 +1,6 @@
 package com.example.dz_oop
 
-class Newspaper(id: Int, available: Boolean, name: String, val issueNumber: Int) :
+class Newspaper(id: Int, available: Boolean, name: String, private val issueNumber: Int) :
     LibraryItem(id, available, name) {
 
     override fun getDetailedInfo(): String {
