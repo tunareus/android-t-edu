@@ -6,7 +6,4 @@ abstract class LibraryItem(val id: Int, var available: Boolean, val name: String
     }
 
     abstract fun getDetailedInfo(): String
-
-    open fun canTakeHome(): Boolean = false
-    open fun canReadInLibrary(): Boolean = false
 }

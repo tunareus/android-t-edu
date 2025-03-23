@@ -94,7 +94,7 @@ fun processSubtype(items: List<LibraryItem>, scanner: Scanner, itemType: String)
 
 fun displayItemsList(items: List<LibraryItem>, itemType: String) {
     println("$itemType список:")
-    for ((index, item) in items.withIndex()) {
+    items.forEachIndexed { index, item ->
         println("${index + 1}. ${item.getShortInfo()}")
     }
     println("$ACTION_GO_BACK. Вернуться в главное меню")
@@ -128,23 +128,23 @@ fun displayItemMenu(item: LibraryItem) {
 }
 
 fun handleTakeHome(item: LibraryItem, itemType: String) {
-    if (!item.canTakeHome()) {
+    if (item !is HomeLendable) {
         println("Невозможно взять домой данный тип объекта.")
     } else if (!item.available) {
         println("Объект уже занят.")
     } else {
-        item.available = false
+        item.takeHomeAction()
         println("$itemType ${item.id} взяли домой")
     }
 }
 
 fun handleReadInLibrary(item: LibraryItem, itemType: String) {
-    if (!item.canReadInLibrary()) {
+    if (item !is InLibraryUse) {
         println("Невозможно читать в читальном зале данный тип объекта.")
     } else if (!item.available) {
         println("Объект уже занят.")
     } else {
-        item.available = false
+        item.readInLibraryAction()
         println("$itemType ${item.id} взяли в читальный зал")
     }
 }
