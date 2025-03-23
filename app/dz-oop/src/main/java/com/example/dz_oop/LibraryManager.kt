@@ -13,15 +13,18 @@ fun main() {
 fun initializeLibrary(): MutableList<LibraryItem> {
     return mutableListOf(
         Book(90743, true, "Маугли", 202, "Джозеф Киплинг"),
-        Newspaper(17245, true, "Сельская жизнь", 794),
+        Newspaper(17245, true, "Сельская жизнь", 794, 3),
         Disk(33456, true, "Дэдпул и Росомаха", "DVD"),
         Book(11223, true, "Война и мир", 1225, "Лев Толстой"),
-        Newspaper(55678, true, "Новости мира", 150),
+        Newspaper(55678, true, "Новости мира", 150, 7),
         Disk(98765, true, "Интерстеллар", "CD")
     )
 }
 
-fun runLibrarySystem(scanner: Scanner, libraryItems: List<LibraryItem>) {
+fun runLibrarySystem(scanner: Scanner, libraryItems: MutableList<LibraryItem>) {
+    val manager = Manager()
+    val digitizationCabinet = DigitizationCabinet()
+
     mainLoop@ while (true) {
         displayMainMenu()
         print("Введите ваш выбор: ")
@@ -30,6 +33,8 @@ fun runLibrarySystem(scanner: Scanner, libraryItems: List<LibraryItem>) {
             ACTION_BOOKS -> handleBookSection(libraryItems, scanner)
             ACTION_NEWSPAPERS -> handleNewspaperSection(libraryItems, scanner)
             ACTION_DISKS -> handleDiskSection(libraryItems, scanner)
+            ACTION_MANAGER -> handleManagerSection(scanner, manager, libraryItems)
+            ACTION_DIGITIZE -> handleDigitizationSection(scanner, digitizationCabinet, libraryItems)
             ACTION_EXIT -> break@mainLoop
             else -> println("Неверный выбор, повторите ввод.")
         }
@@ -43,6 +48,8 @@ fun displayMainMenu() {
         $ACTION_BOOKS. Показать книги
         $ACTION_NEWSPAPERS. Показать газеты
         $ACTION_DISKS. Показать диски
+        $ACTION_MANAGER. Менеджер по закупкам
+        $ACTION_DIGITIZE. Кабинет оцифровки
         $ACTION_EXIT. Выход (закрыть программу)
     """.trimIndent())
 }
@@ -72,6 +79,107 @@ fun handleDiskSection(libraryItems: List<LibraryItem>, scanner: Scanner) {
         return
     }
     processSubtype(disks, scanner, "Диск")
+}
+
+fun handleManagerSection(scanner: Scanner, manager: Manager, items: MutableList<LibraryItem>) {
+    println("""
+        Менеджер по закупкам:
+        $ACTION_BUY_BOOK. Купить книгу
+        $ACTION_BUY_NEWSPAPER. Купить газету
+        $ACTION_BUY_DISK. Купить диск
+        $ACTION_GO_BACK. Вернуться в главное меню
+    """.trimIndent())
+
+    print("Введите ваш выбор: ")
+
+    when (scanner.nextLine().trim()) {
+        ACTION_BUY_BOOK -> {
+            val bookShop = BookShop()
+            val book = manager.buy(bookShop)
+            items.add(book)
+            println("Книга '${book.name}' с ID ${book.id} успешно куплена и добавлена в библиотеку")
+        }
+        ACTION_BUY_NEWSPAPER -> {
+            val newspaperKiosk = NewspaperKiosk()
+            val newspaper = manager.buy(newspaperKiosk)
+            items.add(newspaper)
+            println("Газета '${newspaper.name}' с ID ${newspaper.id} успешно куплена и добавлена в библиотеку")
+        }
+        ACTION_BUY_DISK -> {
+            val diskShop = DiskShop()
+            val disk = manager.buy(diskShop)
+            items.add(disk)
+            println("Диск '${disk.name}' с ID ${disk.id} успешно куплен и добавлен в библиотеку")
+        }
+        ACTION_GO_BACK -> return
+        else -> println("Неверный выбор, повторите ввод.")
+    }
+}
+
+fun handleDigitizationSection(scanner: Scanner, cabinet: DigitizationCabinet, items: MutableList<LibraryItem>) {
+    println("""
+        Кабинет оцифровки:
+        $ACTION_DIGITIZE_BOOK. Оцифровать книгу
+        $ACTION_DIGITIZE_NEWSPAPER. Оцифровать газету
+        $ACTION_GO_BACK. Вернуться в главное меню
+    """.trimIndent())
+
+    print("Введите ваш выбор: ")
+
+    when (scanner.nextLine().trim()) {
+        ACTION_DIGITIZE_BOOK -> {
+            val books = items.filterByType<Book>()
+            if (books.isEmpty()) {
+                println("Книг не найдено.")
+                return
+            }
+
+            println("Выберите книгу для оцифровки:")
+            books.forEachIndexed { index, book ->
+                println("${index + 1}. ${book.getShortInfo()}")
+            }
+
+            print("Введите номер: ")
+            val choice = scanner.nextLine().toIntOrNull()
+
+            if (choice == null || choice !in 1..books.size) {
+                println("Неверный выбор.")
+                return
+            }
+
+            val selectedBook = books[choice - 1]
+            val disk = cabinet.digitize(selectedBook)
+            items.add(disk)
+            println("Книга '${selectedBook.name}' успешно оцифрована. Создан диск '${disk.name}' с ID ${disk.id}")
+        }
+        ACTION_DIGITIZE_NEWSPAPER -> {
+            val newspapers = items.filterByType<Newspaper>()
+            if (newspapers.isEmpty()) {
+                println("Газет не найдено.")
+                return
+            }
+
+            println("Выберите газету для оцифровки:")
+            newspapers.forEachIndexed { index, newspaper ->
+                println("${index + 1}. ${newspaper.getShortInfo()}")
+            }
+
+            print("Введите номер: ")
+            val choice = scanner.nextLine().toIntOrNull()
+
+            if (choice == null || choice !in 1..newspapers.size) {
+                println("Неверный выбор.")
+                return
+            }
+
+            val selectedNewspaper = newspapers[choice - 1]
+            val disk = cabinet.digitize(selectedNewspaper)
+            items.add(disk)
+            println("Газета '${selectedNewspaper.name}' успешно оцифрована. Создан диск '${disk.name}' с ID ${disk.id}")
+        }
+        ACTION_GO_BACK -> return
+        else -> println("Неверный выбор, повторите ввод.")
+    }
 }
 
 fun processSubtype(items: List<LibraryItem>, scanner: Scanner, itemType: String) {
