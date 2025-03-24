@@ -23,7 +23,7 @@ fun initializeLibrary(): MutableList<LibraryItem> {
 
 fun runLibrarySystem(scanner: Scanner, libraryItems: MutableList<LibraryItem>) {
     val manager = Manager()
-    val digitizationCabinet = DigitizationCabinet()
+    val digitizationCabinet: DigitizationCabinet<Digitizable> = DigitizationCabinet()
 
     mainLoop@ while (true) {
         displayMainMenu()
@@ -116,7 +116,7 @@ fun handleManagerSection(scanner: Scanner, manager: Manager, items: MutableList<
     }
 }
 
-fun handleDigitizationSection(scanner: Scanner, cabinet: DigitizationCabinet, items: MutableList<LibraryItem>) {
+fun handleDigitizationSection(scanner: Scanner, cabinet: DigitizationCabinet<Digitizable>, items: MutableList<LibraryItem>) {
     println("""
         Кабинет оцифровки:
         $ACTION_DIGITIZE_BOOK. Оцифровать книгу

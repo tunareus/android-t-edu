@@ -19,4 +19,6 @@ class Book(
     override fun readInLibraryAction() {
         available = false
     }
+
+    override fun getDigitizableName(): String = name
 }
