@@ -1,5 +1,5 @@
 package com.example.dz_oop
 
-interface Shop<T : LibraryItem> {
+interface Shop<out T : LibraryItem> {
     fun sell(): T
 }

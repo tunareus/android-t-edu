@@ -7,7 +7,7 @@ class NewspaperKiosk : Shop<Newspaper> {
             available = true,
             name = "Новая газета",
             issueNumber = (100..999).random(),
-            month = (1..12).random()
+            month = Month.entries.random()
         )
     }
 }

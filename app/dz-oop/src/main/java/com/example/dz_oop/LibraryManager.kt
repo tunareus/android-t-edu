@@ -13,10 +13,10 @@ fun main() {
 fun initializeLibrary(): MutableList<LibraryItem> {
     return mutableListOf(
         Book(90743, true, "Маугли", 202, "Джозеф Киплинг"),
-        Newspaper(17245, true, "Сельская жизнь", 794, 3),
+        Newspaper(17245, true, "Сельская жизнь", 794, Month.MARCH),
         Disk(33456, true, "Дэдпул и Росомаха", "DVD"),
         Book(11223, true, "Война и мир", 1225, "Лев Толстой"),
-        Newspaper(55678, true, "Новости мира", 150, 7),
+        Newspaper(55678, true, "Новости мира", 150, Month.JULY),
         Disk(98765, true, "Интерстеллар", "CD")
     )
 }
@@ -55,7 +55,7 @@ fun displayMainMenu() {
 }
 
 fun handleBookSection(libraryItems: List<LibraryItem>, scanner: Scanner) {
-    val books = libraryItems.filterIsInstance<Book>()
+    val books = libraryItems.filterByType<Book>()
     if (books.isEmpty()) {
         println("Книг не найдено.")
         return
@@ -64,7 +64,7 @@ fun handleBookSection(libraryItems: List<LibraryItem>, scanner: Scanner) {
 }
 
 fun handleNewspaperSection(libraryItems: List<LibraryItem>, scanner: Scanner) {
-    val newspapers = libraryItems.filterIsInstance<Newspaper>()
+    val newspapers = libraryItems.filterByType<Newspaper>()
     if (newspapers.isEmpty()) {
         println("Газет не найдено.")
         return
@@ -73,7 +73,7 @@ fun handleNewspaperSection(libraryItems: List<LibraryItem>, scanner: Scanner) {
 }
 
 fun handleDiskSection(libraryItems: List<LibraryItem>, scanner: Scanner) {
-    val disks = libraryItems.filterIsInstance<Disk>()
+    val disks = libraryItems.filterByType<Disk>()
     if (disks.isEmpty()) {
         println("Дисков не найдено.")
         return
