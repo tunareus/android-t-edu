@@ -1,3 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">My Application</string>
+    <string name="item_id">ID: %1$d</string>
+    <string name="item_click_text">Элемент с id %1$d</string>
 </resources>
