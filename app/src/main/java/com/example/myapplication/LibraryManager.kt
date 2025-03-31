@@ -17,7 +17,25 @@ fun initializeLibrary(): MutableList<LibraryItem> {
         Disk(33456, true, "Дэдпул и Росомаха", "DVD"),
         Book(11223, true, "Война и мир", 1225, "Лев Толстой"),
         Newspaper(55678, true, "Новости мира", 150, Month.JULY),
-        Disk(98765, true, "Интерстеллар", "CD")
+        Disk(98765, true, "Интерстеллар", "CD"),
+        Book(12345, true, "1984", 328, "Джордж Оруэлл"),
+        Newspaper(67890, true, "Спорт сегодня", 45, Month.APRIL),
+        Disk(54321, true, "Звездные войны", "Blu-ray"),
+        Book(13579, true, "Убить пересмешника", 281, "Харпер Ли"),
+        Newspaper(24680, true, "Экономика и жизнь", 120, Month.FEBRUARY),
+        Disk(86420, true, "Титаник", "DVD"),
+        Book(98765, true, "Гарри Поттер и философский камень", 223, "Джоан Роулинг"),
+        Newspaper(13579, true, "Наука и жизнь", 300, Month.JANUARY),
+        Disk(24680, true, "Властелин колец", "Blu-ray"),
+        Book(54321, true, "Мастер и Маргарита", 406, "Михаил Булгаков"),
+        Newspaper(67890, true, "Культура и искусство", 200, Month.MAY),
+        Disk(13579, true, "Аватар", "DVD"),
+        Book(24680, true, "Преступление и наказание", 430, "Федор Достоевский"),
+        Newspaper(86420, true, "Технологии будущего", 75, Month.AUGUST),
+        Disk(13579, true, "Матрица", "Blu-ray"),
+        Book(98765, true, "451 градус по Фаренгейту", 256, "Рэй Брэдбери"),
+        Newspaper(54321, true, "Политика и общество", 90, Month.NOVEMBER),
+        Disk(67890, true, "Начало", "DVD"),
     )
 }
 
