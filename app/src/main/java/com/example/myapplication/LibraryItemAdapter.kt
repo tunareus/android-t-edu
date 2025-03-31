@@ -69,7 +69,7 @@ class LibraryItemAdapter : ListAdapter<LibraryItem, LibraryItemAdapter.ItemViewH
 
     class LibraryItemDiffCallback : DiffUtil.ItemCallback<LibraryItem>() {
         override fun areItemsTheSame(oldItem: LibraryItem, newItem: LibraryItem): Boolean {
-            return oldItem.id == newItem.id && oldItem::class == newItem::class
+            return oldItem.id == newItem.id
         }
 
         override fun areContentsTheSame(oldItem: LibraryItem, newItem: LibraryItem): Boolean {
