@@ -19,3 +19,5 @@ const val ACTION_BUY_DISK = "3"
 
 const val ACTION_DIGITIZE_BOOK = "1"
 const val ACTION_DIGITIZE_NEWSPAPER = "2"
+
+const val PAYLOAD_AVAILABILITY = "payload_availability"

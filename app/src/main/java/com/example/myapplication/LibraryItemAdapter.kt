@@ -34,10 +34,13 @@ class LibraryItemAdapter : ListAdapter<LibraryItem, LibraryItemAdapter.ItemViewH
                 if (pos != RecyclerView.NO_POSITION) {
                     val item = getItem(pos)
                     item.available = !item.available
-                    notifyItemChanged(pos, "payload_availability")
+                    notifyItemChanged(pos, PAYLOAD_AVAILABILITY)
                     Toast.makeText(
                         binding.root.context,
-                        binding.root.context.getString(R.string.item_click_text, item.id),
+                        binding.root.context.getString(
+                            R.string.item_click_text,
+                            item.id
+                        ),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -68,16 +71,14 @@ class LibraryItemAdapter : ListAdapter<LibraryItem, LibraryItemAdapter.ItemViewH
     }
 
     class LibraryItemDiffCallback : DiffUtil.ItemCallback<LibraryItem>() {
-        override fun areItemsTheSame(oldItem: LibraryItem, newItem: LibraryItem): Boolean {
-            return oldItem.id == newItem.id
-        }
+        override fun areItemsTheSame(oldItem: LibraryItem, newItem: LibraryItem): Boolean =
+            oldItem.id == newItem.id
 
-        override fun areContentsTheSame(oldItem: LibraryItem, newItem: LibraryItem): Boolean {
-            return oldItem == newItem
-        }
+        override fun areContentsTheSame(oldItem: LibraryItem, newItem: LibraryItem): Boolean =
+            oldItem == newItem
 
         override fun getChangePayload(oldItem: LibraryItem, newItem: LibraryItem): Any? {
-            return if (oldItem.available != newItem.available) "payload_availability" else null
+            return if (oldItem.available != newItem.available) PAYLOAD_AVAILABILITY else null
         }
     }
 }
