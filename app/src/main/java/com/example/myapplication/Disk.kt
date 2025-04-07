@@ -10,4 +10,6 @@ class Disk(id: Int, available: Boolean, name: String, private val diskType: Stri
     override fun takeHomeAction() {
         available = false
     }
+
+    fun getDiskType(): String = diskType
 }

@@ -4,8 +4,8 @@ class Newspaper(
     id: Int,
     available: Boolean,
     name: String,
-    private val issueNumber: Int,
-    private val month: Month
+    val issueNumber: Int,
+    val month: Month
 ) : LibraryItem(id, available, name), InLibraryUse, Digitizable {
 
     override fun getDetailedInfo(): String {

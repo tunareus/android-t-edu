@@ -2,7 +2,6 @@ package com.example.myapplication
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -12,14 +11,14 @@ class LibraryItemAdapter : ListAdapter<LibraryItem, LibraryItemAdapter.ItemViewH
     LibraryItemDiffCallback()
 ) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
-        val binding = ItemLibraryItemBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
+    var itemClickListener: ((LibraryItem) -> Unit)? = null
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+        ItemViewHolder(
+            ItemLibraryItemBinding.inflate(
+                LayoutInflater.from(parent.context), parent, false
+            )
         )
-        return ItemViewHolder(binding)
-    }
 
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
         holder.bind(getItem(position))
@@ -32,41 +31,29 @@ class LibraryItemAdapter : ListAdapter<LibraryItem, LibraryItemAdapter.ItemViewH
             binding.cardView.setOnClickListener {
                 val pos = bindingAdapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
-                    val item = getItem(pos)
-                    item.available = !item.available
-                    notifyItemChanged(pos, PAYLOAD_AVAILABILITY)
-                    Toast.makeText(
-                        binding.root.context,
-                        binding.root.context.getString(
-                            R.string.item_click_text,
-                            item.id
-                        ),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    itemClickListener?.invoke(getItem(pos))
                 }
             }
         }
 
-        fun bind(item: LibraryItem) {
-            val context = binding.root.context
+        fun bind(item: LibraryItem) = with(binding) {
+            val ctx = root.context
             val iconResId = when (item) {
                 is Book -> R.drawable.ic_book
                 is Newspaper -> R.drawable.ic_newspaper
                 is Disk -> R.drawable.ic_disk
                 else -> R.drawable.ic_item
             }
-            binding.iconImageView.setImageResource(iconResId)
-            binding.nameTextView.text = item.name
-            binding.idTextView.text = context.getString(R.string.item_id, item.id)
+            iconImageView.setImageResource(iconResId)
+            nameTextView.text = item.name
+            idTextView.text = ctx.getString(R.string.item_id, item.id)
 
-            val alpha = if (item.available) 1.0f else 0.3f
-            binding.nameTextView.alpha = alpha
-            binding.idTextView.alpha = alpha
-            binding.iconImageView.alpha = alpha
+            val alpha = if (item.available) 1f else 0.3f
+            nameTextView.alpha = alpha
+            idTextView.alpha = alpha
+            iconImageView.alpha = alpha
 
-            val elevationDp = if (item.available) 10f else 1f
-            binding.cardView.elevation =
-                elevationDp * context.resources.displayMetrics.density
+            cardView.elevation = (if (item.available) 10f else 1f) * ctx.resources.displayMetrics.density
         }
     }
 
@@ -77,8 +64,7 @@ class LibraryItemAdapter : ListAdapter<LibraryItem, LibraryItemAdapter.ItemViewH
         override fun areContentsTheSame(oldItem: LibraryItem, newItem: LibraryItem): Boolean =
             oldItem == newItem
 
-        override fun getChangePayload(oldItem: LibraryItem, newItem: LibraryItem): Any? {
-            return if (oldItem.available != newItem.available) PAYLOAD_AVAILABILITY else null
-        }
+        override fun getChangePayload(oldItem: LibraryItem, newItem: LibraryItem): Any? =
+            if (oldItem.available != newItem.available) PAYLOAD_AVAILABILITY else null
     }
 }
