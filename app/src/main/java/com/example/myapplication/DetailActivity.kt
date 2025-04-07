@@ -26,15 +26,12 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var rootLayout: ConstraintLayout
     private lateinit var iconImageView: ImageView
     private lateinit var nameField: EditText
-
     private lateinit var pagesField: EditText
     private lateinit var authorField: EditText
-
     private lateinit var diskTypeField: EditText
-
     private lateinit var issueNumberField: EditText
     private lateinit var monthField: EditText
-
+    private lateinit var availableEditText: EditText
     private lateinit var saveButton: Button
 
     private var editable: Boolean = false
@@ -52,6 +49,7 @@ class DetailActivity : AppCompatActivity() {
         diskTypeField = findViewById(R.id.diskTypeEditText)
         issueNumberField = findViewById(R.id.issueNumberEditText)
         monthField = findViewById(R.id.monthEditText)
+        availableEditText = findViewById(R.id.availableEditText)
         saveButton = findViewById(R.id.saveButton)
 
         editable = intent.getBooleanExtra(EXTRA_EDITABLE, false)
@@ -70,16 +68,8 @@ class DetailActivity : AppCompatActivity() {
                 diskTypeField.visibility = View.GONE
                 issueNumberField.visibility = View.GONE
                 monthField.visibility = View.GONE
-
                 pagesField.filters = arrayOf(object : InputFilter {
-                    override fun filter(
-                        source: CharSequence,
-                        start: Int,
-                        end: Int,
-                        dest: Spanned,
-                        dstart: Int,
-                        dend: Int
-                    ): CharSequence? {
+                    override fun filter(source: CharSequence, start: Int, end: Int, dest: Spanned, dstart: Int, dend: Int): CharSequence? {
                         for (i in start until end) {
                             if (!source[i].isDigit()) return ""
                         }
@@ -100,16 +90,8 @@ class DetailActivity : AppCompatActivity() {
                 pagesField.visibility = View.GONE
                 authorField.visibility = View.GONE
                 diskTypeField.visibility = View.GONE
-
                 issueNumberField.filters = arrayOf(object : InputFilter {
-                    override fun filter(
-                        source: CharSequence,
-                        start: Int,
-                        end: Int,
-                        dest: Spanned,
-                        dstart: Int,
-                        dend: Int
-                    ): CharSequence? {
+                    override fun filter(source: CharSequence, start: Int, end: Int, dest: Spanned, dstart: Int, dend: Int): CharSequence? {
                         for (i in start until end) {
                             if (!source[i].isDigit()) return ""
                         }
@@ -117,14 +99,7 @@ class DetailActivity : AppCompatActivity() {
                     }
                 })
                 monthField.filters = arrayOf(object : InputFilter {
-                    override fun filter(
-                        source: CharSequence,
-                        start: Int,
-                        end: Int,
-                        dest: Spanned,
-                        dstart: Int,
-                        dend: Int
-                    ): CharSequence? {
+                    override fun filter(source: CharSequence, start: Int, end: Int, dest: Spanned, dstart: Int, dend: Int): CharSequence? {
                         for (i in start until end) {
                             if (!source[i].isLetter()) return ""
                         }
@@ -133,6 +108,24 @@ class DetailActivity : AppCompatActivity() {
                 })
             }
         }
+
+        val constraintSet = ConstraintSet()
+        constraintSet.clone(rootLayout)
+        when (itemType) {
+            TYPE_BOOK -> {
+                constraintSet.connect(R.id.availableEditText, ConstraintSet.TOP, R.id.authorEditText, ConstraintSet.BOTTOM, 8)
+                constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.availableEditText, ConstraintSet.BOTTOM, 24)
+            }
+            TYPE_DISK -> {
+                constraintSet.connect(R.id.availableEditText, ConstraintSet.TOP, R.id.diskTypeEditText, ConstraintSet.BOTTOM, 8)
+                constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.availableEditText, ConstraintSet.BOTTOM, 24)
+            }
+            TYPE_NEWSPAPER -> {
+                constraintSet.connect(R.id.availableEditText, ConstraintSet.TOP, R.id.monthEditText, ConstraintSet.BOTTOM, 8)
+                constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.availableEditText, ConstraintSet.BOTTOM, 24)
+            }
+        }
+        constraintSet.applyTo(rootLayout)
 
         if (!editable) {
             @Suppress("DEPRECATION")
@@ -144,6 +137,7 @@ class DetailActivity : AppCompatActivity() {
                         nameField.setText(it.name)
                         pagesField.setText(it.pages.toString())
                         authorField.setText(it.author)
+                        availableEditText.setText(if (it.available) "Да" else "Нет")
                     }
                 }
                 TYPE_DISK -> {
@@ -151,6 +145,7 @@ class DetailActivity : AppCompatActivity() {
                     disk?.let {
                         nameField.setText(it.name)
                         diskTypeField.setText(it.getDiskType())
+                        availableEditText.setText(if (it.available) "Да" else "Нет")
                     }
                 }
                 TYPE_NEWSPAPER -> {
@@ -159,48 +154,25 @@ class DetailActivity : AppCompatActivity() {
                         nameField.setText(it.name)
                         issueNumberField.setText(it.issueNumber.toString())
                         monthField.setText(it.month.displayName)
+                        availableEditText.setText(if (it.available) "Да" else "Нет")
                     }
                 }
             }
-
-            val constraintSet = ConstraintSet()
-            constraintSet.clone(rootLayout)
-            when (itemType) {
-                TYPE_BOOK -> {
-                    constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.authorEditText, ConstraintSet.BOTTOM, 24)
-                }
-                TYPE_DISK -> {
-                    constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.diskTypeEditText, ConstraintSet.BOTTOM, 24)
-                }
-                TYPE_NEWSPAPER -> {
-                    constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.monthEditText, ConstraintSet.BOTTOM, 24)
-                }
-            }
-            constraintSet.applyTo(rootLayout)
-
-            listOf(nameField, pagesField, authorField, diskTypeField, issueNumberField, monthField).forEach {
-                it.isEnabled = false
-            }
+            listOf(nameField, pagesField, authorField, diskTypeField, issueNumberField, monthField, availableEditText)
+                .forEach { it.isEnabled = false }
             saveButton.isEnabled = false
-
         } else {
-            val constraintSet = ConstraintSet()
-            constraintSet.clone(rootLayout)
-            when (itemType) {
-                TYPE_BOOK -> {
-                    constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.authorEditText, ConstraintSet.BOTTOM, 24)
-                }
-                TYPE_DISK -> {
-                    constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.diskTypeEditText, ConstraintSet.BOTTOM, 24)
-                }
-                TYPE_NEWSPAPER -> {
-                    constraintSet.connect(R.id.saveButton, ConstraintSet.TOP, R.id.monthEditText, ConstraintSet.BOTTOM, 24)
-                }
-            }
-            constraintSet.applyTo(rootLayout)
-
+            availableEditText.isEnabled = true
             saveButton.setOnClickListener {
                 val name = nameField.text.toString()
+                val availableStr = availableEditText.text.toString().trim()
+
+                if (!availableStr.equals("Да", ignoreCase = true) && !availableStr.equals("Нет", ignoreCase = true)) {
+                    availableEditText.error = "Введите Да или Нет"
+                    return@setOnClickListener
+                }
+                val available = availableStr.equals("Да", ignoreCase = true)
+
                 when (itemType) {
                     TYPE_BOOK -> {
                         val pagesStr = pagesField.text.toString()
@@ -213,7 +185,7 @@ class DetailActivity : AppCompatActivity() {
                         val author = authorField.text.toString()
                         val newBook = Book(
                             id = UniqueIdGenerator.getUniqueId(),
-                            available = true,
+                            available = available,
                             name = name,
                             pages = pages,
                             author = author
@@ -234,22 +206,22 @@ class DetailActivity : AppCompatActivity() {
                         }
                         if (selectedMonth == null) {
                             monthField.error = "Неверное значение месяца"
-                        } else {
-                            val newNewspaper = Newspaper(
-                                id = UniqueIdGenerator.getUniqueId(),
-                                available = true,
-                                name = name,
-                                issueNumber = issueNumber,
-                                month = selectedMonth
-                            )
-                            sendResult(newNewspaper)
+                            return@setOnClickListener
                         }
+                        val newNewspaper = Newspaper(
+                            id = UniqueIdGenerator.getUniqueId(),
+                            available = available,
+                            name = name,
+                            issueNumber = issueNumber,
+                            month = selectedMonth
+                        )
+                        sendResult(newNewspaper)
                     }
                     TYPE_DISK -> {
                         val diskType = diskTypeField.text.toString()
                         val newDisk = Disk(
                             id = UniqueIdGenerator.getUniqueId(),
-                            available = true,
+                            available = available,
                             name = name,
                             diskType = diskType
                         )

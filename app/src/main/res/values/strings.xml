@@ -13,4 +13,5 @@
     <string name="issue_number_hint">Номер выпуска</string>
     <string name="month_hint">Месяц</string>
     <string name="save">Сохранить</string>
+    <string name="available_hint">Доступен</string>
 </resources>

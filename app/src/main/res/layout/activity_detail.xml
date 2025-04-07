@@ -26,10 +26,9 @@
         android:autofillHints="name"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:layout_marginEnd="16dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toEndOf="@id/iconImageView"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/iconImageView" />
+        app:layout_constraintEnd_toEndOf="parent"/>
 
     <EditText
         android:id="@+id/pagesEditText"
@@ -40,10 +39,9 @@
         android:autofillHints="none"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/nameEditText"
         app:layout_constraintStart_toStartOf="@id/nameEditText"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="@id/nameEditText"/>
 
     <EditText
         android:id="@+id/authorEditText"
@@ -54,10 +52,9 @@
         android:autofillHints="name"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/pagesEditText"
-        app:layout_constraintStart_toStartOf="@id/pagesEditText"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintStart_toStartOf="@id/nameEditText"
+        app:layout_constraintEnd_toEndOf="@id/nameEditText"/>
 
     <EditText
         android:id="@+id/diskTypeEditText"
@@ -68,10 +65,9 @@
         android:autofillHints="none"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/nameEditText"
         app:layout_constraintStart_toStartOf="@id/nameEditText"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/nameEditText"
         android:visibility="gone"/>
 
     <EditText
@@ -83,10 +79,9 @@
         android:autofillHints="none"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/nameEditText"
         app:layout_constraintStart_toStartOf="@id/nameEditText"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/nameEditText"
         android:visibility="gone"/>
 
     <EditText
@@ -98,20 +93,32 @@
         android:autofillHints="none"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/issueNumberEditText"
         app:layout_constraintStart_toStartOf="@id/issueNumberEditText"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/issueNumberEditText"
         android:visibility="gone"/>
+
+    <EditText
+        android:id="@+id/availableEditText"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:hint="@string/available_hint"
+        android:inputType="text"
+        android:layout_marginTop="8dp"
+        android:autofillHints="available"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        app:layout_constraintEnd_toEndOf="@id/nameEditText"
+        app:layout_constraintStart_toStartOf="@id/nameEditText"
+        app:layout_constraintTop_toBottomOf="@id/authorEditText" />
 
     <Button
         android:id="@+id/saveButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="@string/save"
-        app:layout_constraintTop_toBottomOf="@id/monthEditText"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="24dp"/>
-
+        app:layout_constraintEnd_toEndOf="@id/nameEditText"
+        app:layout_constraintStart_toStartOf="@id/nameEditText"
+        app:layout_constraintTop_toBottomOf="@id/availableEditText" />
 </androidx.constraintlayout.widget.ConstraintLayout>
