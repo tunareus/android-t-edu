@@ -1,8 +1,7 @@
 package com.example.myapplication
 
 import android.app.Activity
-import android.app.AlertDialog
-import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -20,15 +19,18 @@ class MainActivity : AppCompatActivity() {
     private val detailActivityLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
-                result.data?.getSerializableExtra(DetailActivity.EXTRA_ITEM)?.let { serializable ->
-                    val newItem = serializable as? LibraryItem
-                    newItem?.let {
-                        viewModel.libraryItems.add(it)
-                        viewModel.libraryItems.sortBy { item -> item.id }
-                        val updatedList = viewModel.libraryItems.toList()
-                        val newIndex = updatedList.indexOf(it)
-                        adapter.submitList(updatedList) {
-                            binding.recyclerView.smoothScrollToPosition(newIndex)
+                val newItem = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    result.data?.getParcelableExtra(DetailActivity.EXTRA_ITEM, LibraryItem::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    result.data?.getParcelableExtra(DetailActivity.EXTRA_ITEM) as? LibraryItem
+                }
+                newItem?.let {
+                    viewModel.onItemCreated(it)
+                    binding.recyclerView.post {
+                        val pos = viewModel.libraryItems.value?.indexOfFirst { item -> item.id == it.id } ?: -1
+                        if (pos >= 0) {
+                            binding.recyclerView.scrollToPosition(pos)
                         }
                     }
                 }
@@ -39,26 +41,27 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.recyclerView.apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = this@MainActivity.adapter
+        binding.recyclerView.layoutManager = LinearLayoutManager(this)
+        binding.recyclerView.adapter = adapter
+
+        viewModel.libraryItems.observe(this) { list ->
+            adapter.submitList(list.toList())
         }
-        adapter.submitList(viewModel.libraryItems.toList())
+
         adapter.itemClickListener = { item ->
-            val intent = Intent(this, DetailActivity::class.java).apply {
-                putExtra(DetailActivity.EXTRA_ITEM, item as java.io.Serializable)
-                when (item) {
-                    is Book -> putExtra(DetailActivity.EXTRA_ITEM_TYPE, DetailActivity.TYPE_BOOK)
-                    is Disk -> putExtra(DetailActivity.EXTRA_ITEM_TYPE, DetailActivity.TYPE_DISK)
-                    is Newspaper -> putExtra(DetailActivity.EXTRA_ITEM_TYPE, DetailActivity.TYPE_NEWSPAPER)
-                }
-                putExtra(DetailActivity.EXTRA_EDITABLE, false)
+            val itemType = when (item) {
+                is Book -> DetailActivity.TYPE_BOOK
+                is Disk -> DetailActivity.TYPE_DISK
+                is Newspaper -> DetailActivity.TYPE_NEWSPAPER
+                else -> DetailActivity.TYPE_BOOK
             }
+            val intent = DetailActivity.newIntent(this, false, itemType, item)
             detailActivityLauncher.launch(intent)
         }
+
         binding.addButton.setOnClickListener {
             val types = arrayOf("Книга", "Диск", "Газета")
-            AlertDialog.Builder(this)
+            androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Выберите тип элемента")
                 .setItems(types) { _, which ->
                     val selectedType = when (which) {
@@ -67,25 +70,15 @@ class MainActivity : AppCompatActivity() {
                         2 -> DetailActivity.TYPE_NEWSPAPER
                         else -> DetailActivity.TYPE_BOOK
                     }
-                    val intent = Intent(this, DetailActivity::class.java).apply {
-                        putExtra(DetailActivity.EXTRA_EDITABLE, true)
-                        putExtra(DetailActivity.EXTRA_ITEM_TYPE, selectedType)
-                    }
+                    val intent = DetailActivity.newIntent(this, true, selectedType)
                     detailActivityLauncher.launch(intent)
                 }
                 .show()
         }
+
         val swipeCallback = SwipeToDeleteCallback { position ->
-            removeItem(position)
+            viewModel.removeItem(position)
         }
         ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.recyclerView)
-    }
-
-    private fun removeItem(position: Int) {
-        if (position in viewModel.libraryItems.indices) {
-            val removedItem = viewModel.libraryItems.removeAt(position)
-            UniqueIdGenerator.releaseId(removedItem.id)
-            adapter.submitList(viewModel.libraryItems.toList())
-        }
     }
 }
