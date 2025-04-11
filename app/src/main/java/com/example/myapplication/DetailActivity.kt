@@ -3,13 +3,12 @@ package com.example.myapplication
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.Spanned
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.view.isVisible
 import com.example.myapplication.databinding.ActivityDetailBinding
 
 class DetailActivity : AppCompatActivity() {
@@ -58,11 +57,11 @@ class DetailActivity : AppCompatActivity() {
 
         when (itemType) {
             TYPE_BOOK -> {
-                binding.pagesEditText.visibility = View.VISIBLE
-                binding.authorEditText.visibility = View.VISIBLE
-                binding.diskTypeEditText.visibility = View.GONE
-                binding.issueNumberEditText.visibility = View.GONE
-                binding.monthEditText.visibility = View.GONE
+                binding.pagesEditText.isVisible = true
+                binding.authorEditText.isVisible = true
+                binding.diskTypeEditText.isVisible = false
+                binding.issueNumberEditText.isVisible = false
+                binding.monthEditText.isVisible = false
                 binding.pagesEditText.filters = arrayOf(object : InputFilter {
                     override fun filter(
                         source: CharSequence?, start: Int, end: Int,
@@ -71,18 +70,18 @@ class DetailActivity : AppCompatActivity() {
                 })
             }
             TYPE_DISK -> {
-                binding.diskTypeEditText.visibility = View.VISIBLE
-                binding.pagesEditText.visibility = View.GONE
-                binding.authorEditText.visibility = View.GONE
-                binding.issueNumberEditText.visibility = View.GONE
-                binding.monthEditText.visibility = View.GONE
+                binding.diskTypeEditText.isVisible = true
+                binding.pagesEditText.isVisible = false
+                binding.authorEditText.isVisible = false
+                binding.issueNumberEditText.isVisible = false
+                binding.monthEditText.isVisible = false
             }
             TYPE_NEWSPAPER -> {
-                binding.issueNumberEditText.visibility = View.VISIBLE
-                binding.monthEditText.visibility = View.VISIBLE
-                binding.pagesEditText.visibility = View.GONE
-                binding.authorEditText.visibility = View.GONE
-                binding.diskTypeEditText.visibility = View.GONE
+                binding.issueNumberEditText.isVisible = true
+                binding.monthEditText.isVisible = true
+                binding.pagesEditText.isVisible = false
+                binding.authorEditText.isVisible = false
+                binding.diskTypeEditText.isVisible = false
                 binding.issueNumberEditText.filters = arrayOf(object : InputFilter {
                     override fun filter(
                         source: CharSequence?, start: Int, end: Int,
@@ -104,43 +103,38 @@ class DetailActivity : AppCompatActivity() {
             TYPE_BOOK -> {
                 constraintSet.connect(
                     binding.availableEditText.id, ConstraintSet.TOP,
-                    binding.authorEditText.id, ConstraintSet.BOTTOM, 8
+                    binding.authorEditText.id, ConstraintSet.BOTTOM, dpToPx(4)
                 )
                 constraintSet.connect(
                     binding.saveButton.id, ConstraintSet.TOP,
-                    binding.availableEditText.id, ConstraintSet.BOTTOM, 24
+                    binding.availableEditText.id, ConstraintSet.BOTTOM, dpToPx(24)
                 )
             }
             TYPE_DISK -> {
                 constraintSet.connect(
                     binding.availableEditText.id, ConstraintSet.TOP,
-                    binding.diskTypeEditText.id, ConstraintSet.BOTTOM, 8
+                    binding.diskTypeEditText.id, ConstraintSet.BOTTOM, dpToPx(4)
                 )
                 constraintSet.connect(
                     binding.saveButton.id, ConstraintSet.TOP,
-                    binding.availableEditText.id, ConstraintSet.BOTTOM, 24
+                    binding.availableEditText.id, ConstraintSet.BOTTOM, dpToPx(24)
                 )
             }
             TYPE_NEWSPAPER -> {
                 constraintSet.connect(
                     binding.availableEditText.id, ConstraintSet.TOP,
-                    binding.monthEditText.id, ConstraintSet.BOTTOM, 8
+                    binding.monthEditText.id, ConstraintSet.BOTTOM, dpToPx(4)
                 )
                 constraintSet.connect(
                     binding.saveButton.id, ConstraintSet.TOP,
-                    binding.availableEditText.id, ConstraintSet.BOTTOM, 24
+                    binding.availableEditText.id, ConstraintSet.BOTTOM, dpToPx(24)
                 )
             }
         }
         constraintSet.applyTo(binding.root)
 
         if (!editable) {
-            val currentItem = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(EXTRA_ITEM, LibraryItem::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(EXTRA_ITEM) as? LibraryItem
-            }
+            val currentItem = intent.getParcelableExtraCompat<LibraryItem>(EXTRA_ITEM)
             when (itemType) {
                 TYPE_BOOK -> {
                     val book = currentItem as? Book

@@ -13,6 +13,9 @@ class SwipeToDeleteCallback(private val removeItem: (Int) -> Unit) :
     ): Boolean = false
 
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-        removeItem(viewHolder.adapterPosition)
+        val position = viewHolder.bindingAdapterPosition
+        if (position != RecyclerView.NO_POSITION) {
+            removeItem(position)
+        }
     }
 }

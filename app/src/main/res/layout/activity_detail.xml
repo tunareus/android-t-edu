@@ -104,7 +104,6 @@
         android:layout_height="48dp"
         android:hint="@string/available_hint"
         android:inputType="text"
-        android:layout_marginTop="8dp"
         android:autofillHints="available"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"

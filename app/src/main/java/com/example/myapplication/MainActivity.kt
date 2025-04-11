@@ -1,7 +1,6 @@
 package com.example.myapplication
 
 import android.app.Activity
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -19,16 +18,13 @@ class MainActivity : AppCompatActivity() {
     private val detailActivityLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
-                val newItem = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    result.data?.getParcelableExtra(DetailActivity.EXTRA_ITEM, LibraryItem::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    result.data?.getParcelableExtra(DetailActivity.EXTRA_ITEM) as? LibraryItem
-                }
+                val newItem = result.data?.getParcelableExtraCompat<LibraryItem>(DetailActivity.EXTRA_ITEM)
                 newItem?.let {
                     viewModel.onItemCreated(it)
                     binding.recyclerView.post {
-                        val pos = viewModel.libraryItems.value?.indexOfFirst { item -> item.id == it.id } ?: -1
+                        val pos =
+                            viewModel.libraryItems.value?.indexOfFirst { item -> item.id == it.id }
+                                ?: -1
                         if (pos >= 0) {
                             binding.recyclerView.scrollToPosition(pos)
                         }

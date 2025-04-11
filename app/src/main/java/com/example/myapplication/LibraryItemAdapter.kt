@@ -53,7 +53,10 @@ class LibraryItemAdapter : ListAdapter<LibraryItem, LibraryItemAdapter.ItemViewH
             idTextView.alpha = alpha
             iconImageView.alpha = alpha
 
-            cardView.elevation = (if (item.available) 10f else 1f) * ctx.resources.displayMetrics.density
+            cardView.elevation = if (item.available)
+                ctx.dpToPx(10).toFloat()
+            else
+                ctx.dpToPx(1).toFloat()
         }
     }
 
