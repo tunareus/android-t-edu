@@ -1,3 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">My Application</string>
+    <string name="item_id">ID: %1$d</string>
+    <string name="item_click_text">Элемент с id %1$d</string>
+    <string name="recyclerview_desc">Список элементов</string>
+    <string name="add_button_text">Добавить</string>
+    <string name="icon_desc">Иконка книги</string>
+    <string name="name_hint">Название</string>
+    <string name="pages_hint">Количество страниц</string>
+    <string name="author_hint">Автор</string>
+    <string name="disk_type_hint">Тип диска</string>
+    <string name="issue_number_hint">Номер выпуска</string>
+    <string name="month_hint">Месяц</string>
+    <string name="save">Сохранить</string>
+    <string name="available_hint">Доступен</string>
 </resources>
