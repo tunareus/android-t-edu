@@ -1,10 +1,11 @@
 package com.example.myapplication
 
-import java.util.PriorityQueue
+import java.util.LinkedList
+import java.util.Queue
 
 object UniqueIdGenerator {
-    private var counter = 10000
-    private val freedIds = PriorityQueue<Int>()
+    private var counter: Int = 10000
+    private val freedIds: Queue<Int> = LinkedList()
 
     fun getUniqueId(): Int {
         return if (freedIds.isNotEmpty()) {
@@ -15,6 +16,11 @@ object UniqueIdGenerator {
     }
 
     fun releaseId(id: Int) {
-        freedIds.offer(id)
+        freedIds.add(id)
+    }
+
+    fun reset() {
+        counter = 10000
+        freedIds.clear()
     }
 }

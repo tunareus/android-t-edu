@@ -1,80 +1,219 @@
 package com.example.myapplication
 
-import android.app.Activity
 import android.os.Bundle
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.fragment.app.commit
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.findNavController
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.navigation.fragment.NavHostFragment
 import com.example.myapplication.databinding.ActivityMainBinding
+import android.content.DialogInterface
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
-    private lateinit var binding: ActivityMainBinding
-    private val adapter = LibraryItemAdapter()
-    private val viewModel: LibraryViewModel by viewModels()
+    private val binding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+    private val libraryViewModel: LibraryViewModel by lazy {
+        ViewModelProvider(this)[LibraryViewModel::class.java]
+    }
+    private var isTwoPaneMode = false
 
-    private val detailActivityLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val newItem = result.data?.getParcelableExtraCompat<LibraryItem>(DetailActivity.EXTRA_ITEM)
-                newItem?.let {
-                    viewModel.onItemCreated(it)
-                    binding.recyclerView.post {
-                        val pos =
-                            viewModel.libraryItems.value?.indexOfFirst { item -> item.id == it.id }
-                                ?: -1
-                        if (pos >= 0) {
-                            binding.recyclerView.scrollToPosition(pos)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(binding.root)
+        isTwoPaneMode = binding.detailContainer != null
+
+        if (savedInstanceState != null) {
+            binding.root.post {
+                if (libraryViewModel.selectedItem.value != null) {
+                    val item = libraryViewModel.selectedItem.value!!
+                    onItemSelected(item)
+                }
+            }
+        }
+
+        libraryViewModel.selectedItem.observe(this) { item ->
+            if (isTwoPaneMode) {
+                if (item != null) {
+                    val fragment = DetailFragment.newInstance(
+                        editable = false,
+                        itemType = getItemType(item),
+                        item = item
+                    )
+                    supportFragmentManager.commit {
+                        replace(R.id.detailContainer, fragment)
+                    }
+                } else {
+                    supportFragmentManager.commit {
+                        replace(R.id.detailContainer, EmptyDetailFragment())
+                    }
+                }
+            } else {
+                //
+            }
+        }
+
+        if (isTwoPaneMode) {
+            if (supportFragmentManager.findFragmentById(R.id.listContainer) !is ListFragment) {
+                supportFragmentManager.commit {
+                    replace(R.id.listContainer, ListFragment())
+                }
+            }
+
+            if (libraryViewModel.selectedItem.value == null) {
+                supportFragmentManager.commit {
+                    replace(R.id.detailContainer, EmptyDetailFragment())
+                }
+            }
+        } else {
+            val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+            val navController = navHostFragment.navController
+            if (savedInstanceState == null) {
+                navController.navigate(R.id.listFragment)
+            }
+        }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isTwoPaneMode) {
+                    if (libraryViewModel.selectedItem.value != null) {
+                        libraryViewModel.setSelectedItem(null)
+                    } else {
+                        finish()
+                    }
+                } else {
+                    val navController = findNavController(R.id.nav_host_fragment)
+
+                    if (navController.currentDestination?.id == R.id.listFragment) {
+                        finish()
+                    } else {
+                        if (!navController.popBackStack()) {
+                            finish()
                         }
                     }
                 }
             }
-        }
+        })
+    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        binding.recyclerView.layoutManager = LinearLayoutManager(this)
-        binding.recyclerView.adapter = adapter
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("state_saved", true)
+    }
 
-        viewModel.libraryItems.observe(this) { list ->
-            adapter.submitList(list.toList())
-        }
-
-        adapter.itemClickListener = { item ->
-            val itemType = when (item) {
-                is Book -> DetailActivity.TYPE_BOOK
-                is Disk -> DetailActivity.TYPE_DISK
-                is Newspaper -> DetailActivity.TYPE_NEWSPAPER
-                else -> DetailActivity.TYPE_BOOK
-            }
-            val intent = DetailActivity.newIntent(this, false, itemType, item)
-            detailActivityLauncher.launch(intent)
-        }
-
-        binding.addButton.setOnClickListener {
-            val types = arrayOf("Книга", "Диск", "Газета")
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Выберите тип элемента")
-                .setItems(types) { _, which ->
-                    val selectedType = when (which) {
-                        0 -> DetailActivity.TYPE_BOOK
-                        1 -> DetailActivity.TYPE_DISK
-                        2 -> DetailActivity.TYPE_NEWSPAPER
-                        else -> DetailActivity.TYPE_BOOK
-                    }
-                    val intent = DetailActivity.newIntent(this, true, selectedType)
-                    detailActivityLauncher.launch(intent)
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (newConfig.orientation != resources.configuration.orientation) {
+            binding.root.post {
+                val currentItem = libraryViewModel.selectedItem.value
+                if (currentItem != null) {
+                    libraryViewModel.setSelectedItem(null)
+                    libraryViewModel.setSelectedItem(currentItem)
                 }
-                .show()
+            }
         }
+    }
 
-        val swipeCallback = SwipeToDeleteCallback { position ->
-            viewModel.removeItem(position)
+    override fun onItemSelected(item: LibraryItem) {
+        libraryViewModel.setSelectedItem(item)
+
+        if (isTwoPaneMode) {
+            val fragment = DetailFragment.newInstance(
+                editable = false,
+                itemType = getItemType(item),
+                item = item
+            )
+            supportFragmentManager.commit {
+                replace(R.id.detailContainer, fragment)
+            }
+        } else {
+            val navController = findNavController(R.id.nav_host_fragment)
+
+            when (navController.currentDestination?.id) {
+                R.id.listFragment -> {
+                    val bundle = Bundle().apply {
+                        putBoolean("editable", false)
+                        putString("item_type", getItemType(item))
+                        putParcelable("item", item)
+                    }
+                    navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
+                }
+                R.id.detailFragment -> {
+                    navController.popBackStack(R.id.listFragment, false)
+
+                    navController.currentBackStackEntry?.lifecycle?.addObserver(object : DefaultLifecycleObserver {
+                        override fun onResume(owner: LifecycleOwner) {
+                            owner.lifecycle.removeObserver(this)
+                            val bundle = Bundle().apply {
+                                putBoolean("editable", false)
+                                putString("item_type", getItemType(item))
+                                putParcelable("item", item)
+                            }
+                            navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
+                        }
+                    })
+                }
+            }
         }
-        ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.recyclerView)
+    }
+
+    override fun onAddItemClicked() {
+        val optionTypes = arrayOf(
+            DetailFragment.TYPE_BOOK,
+            DetailFragment.TYPE_NEWSPAPER,
+            DetailFragment.TYPE_DISK
+        )
+
+        val optionsRu = arrayOf(
+            "Книга",
+            "Газета",
+            "Диск"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Выберите тип элемента")
+            .setItems(optionsRu) { _: DialogInterface, which: Int ->
+                val itemType = optionTypes[which]
+
+                if (isTwoPaneMode) {
+                    val fragment = DetailFragment.newInstance(editable = true, itemType = itemType)
+                    supportFragmentManager.commit {
+                        replace(R.id.detailContainer, fragment)
+                    }
+                } else {
+                    val navController = findNavController(R.id.nav_host_fragment)
+
+                    if (navController.currentDestination?.id == R.id.listFragment) {
+                        val bundle = Bundle().apply {
+                            putBoolean("editable", true)
+                            putString("item_type", itemType)
+                        }
+                        navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
+                    } else {
+                        navController.navigate(R.id.listFragment)
+                        navController.currentBackStackEntry?.lifecycle?.addObserver(object : DefaultLifecycleObserver {
+                            override fun onResume(owner: LifecycleOwner) {
+                                val bundle = Bundle().apply {
+                                    putBoolean("editable", true)
+                                    putString("item_type", itemType)
+                                }
+                                navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
+                                owner.lifecycle.removeObserver(this)
+                            }
+                        })
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun getItemType(item: LibraryItem): String = when (item) {
+        is Book -> DetailFragment.TYPE_BOOK
+        is Newspaper -> DetailFragment.TYPE_NEWSPAPER
+        is Disk -> DetailFragment.TYPE_DISK
+        else -> ""
     }
 }
