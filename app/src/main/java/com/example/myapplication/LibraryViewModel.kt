@@ -13,7 +13,12 @@ class LibraryViewModel : ViewModel() {
     private val _libraryItems = MutableLiveData<List<LibraryItem>>()
     val libraryItems: LiveData<List<LibraryItem>> get() = _libraryItems
 
-    var selectedItem: LibraryItem? = null
+    private val _selectedItem = MutableLiveData<LibraryItem?>()
+    val selectedItem: LiveData<LibraryItem?> get() = _selectedItem
+
+    fun setSelectedItem(item: LibraryItem?) {
+        _selectedItem.value = item
+    }
 
     private val _scrollToPosition = MutableSharedFlow<Int>()
     val scrollToPosition: SharedFlow<Int> = _scrollToPosition
