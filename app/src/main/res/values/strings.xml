@@ -14,4 +14,7 @@
     <string name="month_hint">Месяц</string>
     <string name="save">Сохранить</string>
     <string name="available_hint">Доступен</string>
+    <string name="error_loading_message">Ошибка: %1$s</string>
+    <string name="unknown_error">Неизвестная ошибка</string>
+    <string name="retry_button_text">Повторить</string>
 </resources>

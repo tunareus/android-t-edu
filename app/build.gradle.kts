@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation("androidx.fragment:fragment-ktx:1.8.6")
+    implementation("com.facebook.shimmer:shimmer:0.5.0")
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
     testImplementation(libs.junit)

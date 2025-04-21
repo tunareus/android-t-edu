@@ -1,16 +1,18 @@
 package com.example.myapplication
 
 import android.os.Bundle
-import android.text.InputFilter
-import android.text.Spanned
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.databinding.ActivityDetailBinding
+import kotlinx.coroutines.launch
 
 class DetailFragment : Fragment() {
 
@@ -28,7 +30,7 @@ class DetailFragment : Fragment() {
             val args = Bundle().apply {
                 putBoolean(ARG_EDITABLE, editable)
                 putString(ARG_ITEM_TYPE, itemType)
-                if (item != null) putParcelable(ARG_ITEM, item)
+                item?.let { putParcelable(ARG_ITEM, it) }
             }
             fragment.arguments = args
             return fragment
@@ -59,7 +61,8 @@ class DetailFragment : Fragment() {
         arguments?.let {
             editable = it.getBoolean(ARG_EDITABLE, false)
             itemType = it.getString(ARG_ITEM_TYPE, TYPE_BOOK) ?: TYPE_BOOK
-            val item = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+
+            val item: LibraryItem? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 it.getParcelable(ARG_ITEM, LibraryItem::class.java)
             } else {
                 @Suppress("DEPRECATION")
@@ -68,6 +71,10 @@ class DetailFragment : Fragment() {
             if (item != null) {
                 setupItemData(item)
             }
+        } ?: run {
+            Toast.makeText(context, "Ошибка: Не удалось загрузить данные", Toast.LENGTH_SHORT).show()
+            parentFragmentManager.popBackStack()
+            return
         }
 
         setupUI()
@@ -75,221 +82,169 @@ class DetailFragment : Fragment() {
     }
 
     private fun setupItemData(item: LibraryItem) {
-        when (itemType) {
-            TYPE_BOOK -> {
-                val book = item as? Book
-                book?.let {
-                    binding.nameEditText.setText(it.name)
-                    binding.pagesEditText.setText(it.pages.toString())
-                    binding.authorEditText.setText(it.author)
-                    binding.availableEditText.setText(if (it.available) "Да" else "Нет")
-                }
+        binding.nameEditText.setText(item.name)
+        binding.availableEditText.setText(if (item.available) "Да" else "Нет")
+
+        when (item) {
+            is Book -> {
+                binding.pagesEditText.setText(item.pages.toString())
+                binding.authorEditText.setText(item.author)
             }
-            TYPE_DISK -> {
-                val disk = item as? Disk
-                disk?.let {
-                    binding.nameEditText.setText(it.name)
-                    binding.diskTypeEditText.setText(it.getDiskType())
-                    binding.availableEditText.setText(if (it.available) "Да" else "Нет")
-                }
+            is Disk -> {
+                binding.diskTypeEditText.setText(item.getDiskType())
             }
-            TYPE_NEWSPAPER -> {
-                val newspaper = item as? Newspaper
-                newspaper?.let {
-                    binding.nameEditText.setText(it.name)
-                    binding.issueNumberEditText.setText(it.issueNumber.toString())
-                    binding.monthEditText.setText(it.month.displayName)
-                    binding.availableEditText.setText(if (it.available) "Да" else "Нет")
-                }
+            is Newspaper -> {
+                binding.issueNumberEditText.setText(item.issueNumber.toString())
+                binding.monthEditText.setText(item.month.displayName)
             }
         }
     }
 
     private fun setupUI() {
-        when (itemType) {
-            TYPE_BOOK -> binding.iconImageView.setImageResource(R.drawable.ic_book)
-            TYPE_DISK -> binding.iconImageView.setImageResource(R.drawable.ic_disk)
-            TYPE_NEWSPAPER -> binding.iconImageView.setImageResource(R.drawable.ic_newspaper)
+        val iconResId = when (itemType) {
+            TYPE_BOOK -> R.drawable.ic_book
+            TYPE_DISK -> R.drawable.ic_disk
+            TYPE_NEWSPAPER -> R.drawable.ic_newspaper
+            else -> R.drawable.ic_item
         }
+        binding.iconImageView.setImageResource(iconResId)
 
-        when (itemType) {
-            TYPE_BOOK -> {
-                binding.pagesEditText.isVisible = true
-                binding.authorEditText.isVisible = true
-                binding.diskTypeEditText.isVisible = false
-                binding.issueNumberEditText.isVisible = false
-                binding.monthEditText.isVisible = false
+        binding.pagesEditText.isVisible = itemType == TYPE_BOOK
+        binding.authorEditText.isVisible = itemType == TYPE_BOOK
+        binding.diskTypeEditText.isVisible = itemType == TYPE_DISK
+        binding.issueNumberEditText.isVisible = itemType == TYPE_NEWSPAPER
+        binding.monthEditText.isVisible = itemType == TYPE_NEWSPAPER
 
-                binding.pagesEditText.filters = arrayOf(NumberInputFilter())
-            }
-            TYPE_DISK -> {
-                binding.diskTypeEditText.isVisible = true
-                binding.pagesEditText.isVisible = false
-                binding.authorEditText.isVisible = false
-                binding.issueNumberEditText.isVisible = false
-                binding.monthEditText.isVisible = false
-            }
-            TYPE_NEWSPAPER -> {
-                binding.issueNumberEditText.isVisible = true
-                binding.monthEditText.isVisible = true
-                binding.pagesEditText.isVisible = false
-                binding.authorEditText.isVisible = false
-                binding.diskTypeEditText.isVisible = false
+        updateConstraints()
 
-                binding.issueNumberEditText.filters = arrayOf(NumberInputFilter())
-            }
-        }
+        val isEnabled = editable
+        listOf(
+            binding.nameEditText, binding.pagesEditText, binding.authorEditText,
+            binding.diskTypeEditText, binding.issueNumberEditText, binding.monthEditText,
+            binding.availableEditText
+        ).forEach { it.isEnabled = isEnabled }
 
-        val constraintSet = ConstraintSet()
-        constraintSet.clone(binding.rootLayout)
-        when (itemType) {
-            TYPE_BOOK -> {
-                constraintSet.connect(
-                    binding.availableEditText.id, ConstraintSet.TOP,
-                    binding.authorEditText.id, ConstraintSet.BOTTOM,
-                    requireContext().dpToPx(4)
-                )
-                constraintSet.connect(
-                    binding.saveButton.id, ConstraintSet.TOP,
-                    binding.availableEditText.id, ConstraintSet.BOTTOM,
-                    requireContext().dpToPx(24)
-                )
-            }
-            TYPE_DISK -> {
-                constraintSet.connect(
-                    binding.availableEditText.id, ConstraintSet.TOP,
-                    binding.diskTypeEditText.id, ConstraintSet.BOTTOM,
-                    requireContext().dpToPx(4)
-                )
-                constraintSet.connect(
-                    binding.saveButton.id, ConstraintSet.TOP,
-                    binding.availableEditText.id, ConstraintSet.BOTTOM,
-                    requireContext().dpToPx(24)
-                )
-            }
-            TYPE_NEWSPAPER -> {
-                constraintSet.connect(
-                    binding.availableEditText.id, ConstraintSet.TOP,
-                    binding.monthEditText.id, ConstraintSet.BOTTOM,
-                    requireContext().dpToPx(4)
-                )
-                constraintSet.connect(
-                    binding.saveButton.id, ConstraintSet.TOP,
-                    binding.availableEditText.id, ConstraintSet.BOTTOM,
-                    requireContext().dpToPx(24)
-                )
-            }
-        }
-        constraintSet.applyTo(binding.rootLayout)
-
-        if (!editable) {
-            listOf(
-                binding.nameEditText,
-                binding.pagesEditText,
-                binding.authorEditText,
-                binding.diskTypeEditText,
-                binding.issueNumberEditText,
-                binding.monthEditText,
-                binding.availableEditText
-            ).forEach { it.isEnabled = false }
-            binding.saveButton.isVisible = false
-        }
+        binding.saveButton.isVisible = editable
     }
 
+    private fun updateConstraints() {
+        val constraintSet = ConstraintSet()
+        val rootLayout = binding.root as? ConstraintLayout ?: return
+        constraintSet.clone(rootLayout)
+
+        val bottomFieldId = when (itemType) {
+            TYPE_BOOK -> binding.authorEditText.id
+            TYPE_DISK -> binding.diskTypeEditText.id
+            TYPE_NEWSPAPER -> binding.monthEditText.id
+            else -> binding.nameEditText.id
+        }
+
+        constraintSet.connect(
+            binding.availableEditText.id, ConstraintSet.TOP,
+            bottomFieldId, ConstraintSet.BOTTOM,
+            requireContext().dpToPx(8)
+        )
+
+        constraintSet.connect(
+            binding.saveButton.id, ConstraintSet.TOP,
+            binding.availableEditText.id, ConstraintSet.BOTTOM,
+            requireContext().dpToPx(24)
+        )
+
+        constraintSet.applyTo(rootLayout)
+    }
+
+
     private fun setupSaveButton() {
-        if (editable) {
-            binding.saveButton.setOnClickListener {
-                val name = binding.nameEditText.text.toString()
-                val availableStr = binding.availableEditText.text.toString().trim()
+        if (!editable) {
+            binding.saveButton.isVisible = false
+            return
+        }
 
-                if (name.isEmpty()) {
-                    binding.nameEditText.error = "Введите название"
+        binding.saveButton.setOnClickListener {
+            val name = binding.nameEditText.text.toString().trim()
+            val availableStr = binding.availableEditText.text.toString().trim()
+
+            binding.nameEditText.error = null
+            binding.availableEditText.error = null
+
+            if (name.isEmpty()) {
+                binding.nameEditText.error = "Введите название"
+                return@setOnClickListener
+            }
+
+            val available = when {
+                availableStr.equals("Да", ignoreCase = true) -> true
+                availableStr.equals("Нет", ignoreCase = true) -> false
+                else -> {
+                    binding.availableEditText.error = "Введите 'Да' или 'Нет'"
                     return@setOnClickListener
                 }
+            }
 
-                if (!availableStr.equals("Да", ignoreCase = true) &&
-                    !availableStr.equals("Нет", ignoreCase = true)
-                ) {
-                    binding.availableEditText.error = "Введите Да или Нет"
-                    return@setOnClickListener
-                }
-                val available = availableStr.equals("Да", ignoreCase = true)
+            var newItem: LibraryItem? = null
 
+            try {
                 when (itemType) {
                     TYPE_BOOK -> {
+                        binding.pagesEditText.error = null
+                        binding.authorEditText.error = null
                         val pagesStr = binding.pagesEditText.text.toString()
-                        val pagesLong = pagesStr.toLongOrNull()
-                        if (pagesLong == null || pagesLong > Int.MAX_VALUE) {
-                            binding.pagesEditText.error = "Неверное значение количества страниц"
+                        val pages = pagesStr.toIntOrNull()
+                        if (pages == null || pages <= 0) {
+                            binding.pagesEditText.error = "Введите корректное число страниц (> 0)"
                             return@setOnClickListener
                         }
-                        val pages = pagesLong.toInt()
-                        val author = binding.authorEditText.text.toString()
+                        val author = binding.authorEditText.text.toString().trim()
                         if (author.isEmpty()) {
                             binding.authorEditText.error = "Введите автора"
                             return@setOnClickListener
                         }
-                        val newItem = Book(
-                            id = UniqueIdGenerator.getUniqueId(),
-                            available = available,
-                            name = name,
-                            pages = pages,
-                            author = author
-                        )
-                        viewModel.onItemCreated(newItem)
-                        sendResultFragment(newItem)
+                        newItem = Book(UniqueIdGenerator.getUniqueId(), available, name, pages, author)
                     }
                     TYPE_NEWSPAPER -> {
+                        binding.issueNumberEditText.error = null
+                        binding.monthEditText.error = null
                         val issueNumberStr = binding.issueNumberEditText.text.toString()
-                        val issueNumberLong = issueNumberStr.toLongOrNull()
-                        if (issueNumberLong == null || issueNumberLong > Int.MAX_VALUE) {
-                            binding.issueNumberEditText.error = "Неверное значение номера выпуска"
+                        val issueNumber = issueNumberStr.toIntOrNull()
+                        if (issueNumber == null || issueNumber <= 0) {
+                            binding.issueNumberEditText.error = "Введите корректный номер выпуска (> 0)"
                             return@setOnClickListener
                         }
-                        val issueNumber = issueNumberLong.toInt()
                         val monthInput = binding.monthEditText.text.toString().trim()
-                        val selectedMonth = Month.entries.firstOrNull {
-                            it.displayName.equals(monthInput, ignoreCase = true)
-                        }
+                        val selectedMonth = Month.entries.firstOrNull { it.displayName.equals(monthInput, ignoreCase = true) }
                         if (selectedMonth == null) {
-                            binding.monthEditText.error = "Неверное значение месяца"
+                            binding.monthEditText.error = "Неверный месяц (напр. 'Январь')"
                             return@setOnClickListener
                         }
-                        val newItem = Newspaper(
-                            id = UniqueIdGenerator.getUniqueId(),
-                            available = available,
-                            name = name,
-                            issueNumber = issueNumber,
-                            month = selectedMonth
-                        )
-                        viewModel.onItemCreated(newItem)
-                        sendResultFragment(newItem)
+                        newItem = Newspaper(UniqueIdGenerator.getUniqueId(), available, name, issueNumber, selectedMonth)
                     }
                     TYPE_DISK -> {
-                        val diskType = binding.diskTypeEditText.text.toString()
+                        binding.diskTypeEditText.error = null
+                        val diskType = binding.diskTypeEditText.text.toString().trim()
                         if (diskType.isEmpty()) {
                             binding.diskTypeEditText.error = "Введите тип диска"
                             return@setOnClickListener
                         }
-                        val newItem = Disk(
-                            id = UniqueIdGenerator.getUniqueId(),
-                            available = available,
-                            name = name,
-                            diskType = diskType
-                        )
-                        viewModel.onItemCreated(newItem)
-                        sendResultFragment(newItem)
+                        newItem = Disk(UniqueIdGenerator.getUniqueId(), available, name, diskType)
                     }
                 }
+            } catch (e: NumberFormatException) {
+                Toast.makeText(context, "Ошибка ввода числовых данных", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-        }
-    }
 
-    private fun sendResultFragment(item: LibraryItem) {
-        val bundle = Bundle().apply { putParcelable("item", item) }
-        parentFragmentManager.setFragmentResult("new_item", bundle)
-        if (parentFragmentManager.backStackEntryCount > 0) {
-            parentFragmentManager.popBackStack()
+            newItem?.let { itemToAdd ->
+                binding.saveButton.isEnabled = false
+                viewLifecycleOwner.lifecycleScope.launch {
+                    viewModel.addNewItem(itemToAdd)
+                    if (parentFragmentManager.backStackEntryCount > 0) {
+                        parentFragmentManager.popBackStack()
+                    }
+                }
+            } ?: run {
+                Toast.makeText(context, "Ошибка: Неизвестный тип элемента", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -298,14 +253,3 @@ class DetailFragment : Fragment() {
         _binding = null
     }
 }
-
-    private class NumberInputFilter : InputFilter {
-        override fun filter(
-            source: CharSequence?,
-            start: Int,
-            end: Int,
-            dest: Spanned?,
-            dstart: Int,
-            dend: Int
-        ): CharSequence? = null
-    }

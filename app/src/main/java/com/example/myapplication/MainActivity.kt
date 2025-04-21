@@ -1,17 +1,16 @@
 package com.example.myapplication
 
+import android.content.DialogInterface
 import android.os.Bundle
-import androidx.appcompat.app.AlertDialog
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.commit
-import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.findNavController
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.navigation.fragment.NavHostFragment
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.findNavController
 import com.example.myapplication.databinding.ActivityMainBinding
-import android.content.DialogInterface
 
 class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
@@ -28,8 +27,10 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
         if (savedInstanceState != null) {
             binding.root.post {
-                libraryViewModel.selectedItem.value?.let { item ->
-                    onItemSelected(item)
+                if (isTwoPaneMode) {
+                    libraryViewModel.selectedItem.value?.let { item ->
+                        replaceDetailFragment(item)
+                    } ?: replaceWithEmptyFragment()
                 }
             }
         }
@@ -37,42 +38,26 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
         libraryViewModel.selectedItem.observe(this) { item ->
             if (isTwoPaneMode) {
                 if (item != null) {
-                    val fragment = DetailFragment.newInstance(
-                        editable = false,
-                        itemType = getItemType(item),
-                        item = item
-                    )
-                    supportFragmentManager.commit {
-                        replace(R.id.detailContainer, fragment)
-                    }
+                    replaceDetailFragment(item)
                 } else {
-                    supportFragmentManager.commit {
-                        replace(R.id.detailContainer, EmptyDetailFragment())
-                    }
+                    replaceWithEmptyFragment()
                 }
-            } else {
-                //
             }
         }
 
         if (isTwoPaneMode) {
-            if (supportFragmentManager.findFragmentById(R.id.listContainer) !is ListFragment) {
+            if (supportFragmentManager.findFragmentById(R.id.listContainer) == null) {
                 supportFragmentManager.commit {
                     replace(R.id.listContainer, ListFragment())
                 }
             }
-
-            if (libraryViewModel.selectedItem.value == null) {
-                supportFragmentManager.commit {
-                    replace(R.id.detailContainer, EmptyDetailFragment())
-                }
+            if (libraryViewModel.selectedItem.value == null && savedInstanceState == null) {
+                replaceWithEmptyFragment()
+            } else if (libraryViewModel.selectedItem.value != null) {
+                replaceDetailFragment(libraryViewModel.selectedItem.value!!)
             }
         } else {
-            val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
-            val navController = navHostFragment.navController
-            if (savedInstanceState == null) {
-                navController.navigate(R.id.listFragment)
-            }
+            //
         }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -85,7 +70,6 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
                     }
                 } else {
                     val navController = findNavController(R.id.nav_host_fragment)
-
                     if (navController.currentDestination?.id == R.id.listFragment) {
                         finish()
                     } else {
@@ -101,41 +85,29 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
     override fun onItemSelected(item: LibraryItem) {
         libraryViewModel.setSelectedItem(item)
 
-        if (isTwoPaneMode) {
-            val fragment = DetailFragment.newInstance(
-                editable = false,
-                itemType = getItemType(item),
-                item = item
-            )
-            supportFragmentManager.commit {
-                replace(R.id.detailContainer, fragment)
-            }
-        } else {
+        if (!isTwoPaneMode) {
             val navController = findNavController(R.id.nav_host_fragment)
+            val bundle = Bundle().apply {
+                putBoolean("editable", false)
+                putString("item_type", getItemType(item))
+                putParcelable("item", item)
+            }
 
             when (navController.currentDestination?.id) {
                 R.id.listFragment -> {
-                    val bundle = Bundle().apply {
-                        putBoolean("editable", false)
-                        putString("item_type", getItemType(item))
-                        putParcelable("item", item)
-                    }
                     navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
                 }
                 R.id.detailFragment -> {
                     navController.popBackStack(R.id.listFragment, false)
-
                     navController.currentBackStackEntry?.lifecycle?.addObserver(object : DefaultLifecycleObserver {
                         override fun onResume(owner: LifecycleOwner) {
                             owner.lifecycle.removeObserver(this)
-                            val bundle = Bundle().apply {
-                                putBoolean("editable", false)
-                                putString("item_type", getItemType(item))
-                                putParcelable("item", item)
-                            }
                             navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
                         }
                     })
+                }
+                else -> {
+                    navController.popBackStack(R.id.listFragment, false)
                 }
             }
         }
@@ -147,49 +119,60 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
             DetailFragment.TYPE_NEWSPAPER,
             DetailFragment.TYPE_DISK
         )
-
-        val optionsRu = arrayOf(
-            "Книга",
-            "Газета",
-            "Диск"
-        )
+        val optionsRu = arrayOf("Книга", "Газета", "Диск")
 
         AlertDialog.Builder(this)
-            .setTitle("Выберите тип элемента")
+            .setTitle("Выберите тип элемента для добавления")
             .setItems(optionsRu) { _: DialogInterface, which: Int ->
                 val itemType = optionTypes[which]
+                libraryViewModel.setSelectedItem(null)
 
                 if (isTwoPaneMode) {
-                    val fragment = DetailFragment.newInstance(editable = true, itemType = itemType)
+                    val fragment = DetailFragment.newInstance(editable = true, itemType = itemType, item = null)
                     supportFragmentManager.commit {
                         replace(R.id.detailContainer, fragment)
                     }
                 } else {
                     val navController = findNavController(R.id.nav_host_fragment)
-
-                    if (navController.currentDestination?.id == R.id.listFragment) {
-                        val bundle = Bundle().apply {
-                            putBoolean("editable", true)
-                            putString("item_type", itemType)
-                        }
-                        navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
-                    } else {
-                        navController.navigate(R.id.listFragment)
+                    val bundle = Bundle().apply {
+                        putBoolean("editable", true)
+                        putString("item_type", itemType)
+                    }
+                    if (navController.currentDestination?.id == R.id.detailFragment) {
+                        navController.popBackStack(R.id.listFragment, false)
                         navController.currentBackStackEntry?.lifecycle?.addObserver(object : DefaultLifecycleObserver {
                             override fun onResume(owner: LifecycleOwner) {
-                                val bundle = Bundle().apply {
-                                    putBoolean("editable", true)
-                                    putString("item_type", itemType)
-                                }
-                                navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
                                 owner.lifecycle.removeObserver(this)
+                                navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
                             }
                         })
+                    } else {
+                        navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
                     }
                 }
             }
             .show()
     }
+
+    private fun replaceDetailFragment(item: LibraryItem) {
+        if (!isTwoPaneMode) return
+        val fragment = DetailFragment.newInstance(
+            editable = false,
+            itemType = getItemType(item),
+            item = item
+        )
+        supportFragmentManager.commit {
+            replace(R.id.detailContainer, fragment)
+        }
+    }
+
+    private fun replaceWithEmptyFragment() {
+        if (!isTwoPaneMode) return
+        supportFragmentManager.commit {
+            replace(R.id.detailContainer, EmptyDetailFragment())
+        }
+    }
+
 
     private fun getItemType(item: LibraryItem): String = when (item) {
         is Book -> DetailFragment.TYPE_BOOK
