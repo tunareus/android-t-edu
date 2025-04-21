@@ -28,8 +28,7 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
         if (savedInstanceState != null) {
             binding.root.post {
-                if (libraryViewModel.selectedItem.value != null) {
-                    val item = libraryViewModel.selectedItem.value!!
+                libraryViewModel.selectedItem.value?.let { item ->
                     onItemSelected(item)
                 }
             }
@@ -97,24 +96,6 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
                 }
             }
         })
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putBoolean("state_saved", true)
-    }
-
-    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
-        super.onConfigurationChanged(newConfig)
-        if (newConfig.orientation != resources.configuration.orientation) {
-            binding.root.post {
-                val currentItem = libraryViewModel.selectedItem.value
-                if (currentItem != null) {
-                    libraryViewModel.setSelectedItem(null)
-                    libraryViewModel.setSelectedItem(currentItem)
-                }
-            }
-        }
     }
 
     override fun onItemSelected(item: LibraryItem) {
