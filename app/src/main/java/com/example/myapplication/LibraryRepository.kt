@@ -5,8 +5,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.IOException
 import kotlin.random.Random
+import kotlin.system.measureTimeMillis
+
+class RepositoryLoadException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 class LibraryRepository {
 
@@ -25,16 +27,25 @@ class LibraryRepository {
     }
 
     suspend fun getItems(): List<LibraryItem> = withContext(Dispatchers.IO) {
-        val loadingDelay = Random.nextLong(100, 2001)
-        delay(loadingDelay)
+        var items: List<LibraryItem>
+        val elapsedTime = measureTimeMillis {
+            val loadingDelay = Random.nextLong(100, 2001)
+            delay(loadingDelay)
 
-        if (shouldSimulateError()) {
-            throw IOException("Ошибка симуляции: Не удалось загрузить данные из репозитория.")
+            if (shouldSimulateError()) {
+                throw RepositoryLoadException("Ошибка симуляции: Не удалось загрузить данные из репозитория.")
+            }
+
+            items = mutex.withLock {
+                internalLibraryItems.toList()
+            }
         }
 
-        mutex.withLock {
-            internalLibraryItems.toList()
+        if (elapsedTime < 1000) {
+            delay(1000 - elapsedTime)
         }
+
+        return@withContext items
     }
 
     suspend fun addItem(item: LibraryItem) = withContext(Dispatchers.IO) {

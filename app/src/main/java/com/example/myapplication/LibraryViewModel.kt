@@ -1,26 +1,19 @@
 package com.example.myapplication
 
-import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.io.IOException
 
 sealed class UiState {
-    data object Idle : UiState()
     data object Loading : UiState()
     data class Success(val data: List<LibraryItem>) : UiState()
     data class Error(val exception: Throwable) : UiState()
@@ -28,167 +21,67 @@ sealed class UiState {
 
 class LibraryViewModel : ViewModel() {
 
-    private val repository: LibraryRepository by lazy {
-        Log.d("ViewModel", ">>> Initializing LibraryRepository...")
-        try {
-            LibraryRepository().also {
-                Log.d("ViewModel", "<<< LibraryRepository Initialized")
-            }
-        } catch (t: Throwable) {
-            Log.e("ViewModel", "!!! CRASH DURING REPOSITORY INIT !!!", t)
-            throw t
-        }
-    }
+    private val repository: LibraryRepository by lazy { LibraryRepository() }
 
-    private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+    private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    private val _selectedItem = MutableLiveData<LibraryItem?>()
-    val selectedItem: LiveData<LibraryItem?> get() = _selectedItem
+    private val _selectedItem = MutableStateFlow<LibraryItem?>(null)
+    val selectedItem: StateFlow<LibraryItem?> = _selectedItem.asStateFlow()
 
-    private val _isAddingItem = MutableLiveData(false)
-    val isAddingItem: LiveData<Boolean> get() = _isAddingItem
+    private val _isAddingItem = MutableStateFlow(false)
+    val isAddingItem: StateFlow<Boolean> = _isAddingItem.asStateFlow()
 
-    private val _addItemType = MutableLiveData<String?>(null)
-    val addItemType: LiveData<String?> get() = _addItemType
+    private val _addItemType = MutableStateFlow<String?>(null)
+    val addItemType: StateFlow<String?> = _addItemType.asStateFlow()
 
-    private val _toastMessageChannel = Channel<String>(Channel.BUFFERED)
-    val toastMessageFlow = _toastMessageChannel.receiveAsFlow()
+    private val _toastMessage = MutableSharedFlow<String>(replay = 0)
+    val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
-    private val _scrollToPosition = MutableSharedFlow<Int>(replay = 0, extraBufferCapacity = 1)
+    private val _scrollToPosition = MutableSharedFlow<Int>(replay = 0)
     val scrollToPosition: SharedFlow<Int> = _scrollToPosition.asSharedFlow()
 
-
     private var loadJob: Job? = null
-    private var initialLoadTriggered = false
 
     init {
-        Log.d("ViewModel", "init called. Initial state is set to Idle.")
-        Log.d("ViewModel", "Accessing repository in init to trigger lazy init...")
-        try {
-            repository
-            Log.d("ViewModel", "Repository accessed successfully in init.")
-            if (!initialLoadTriggered) {
-                Log.d("ViewModel", "Calling loadLibraryItems from init...")
-                loadLibraryItems()
-                initialLoadTriggered = true
-            } else {
-                Log.d("ViewModel", "loadLibraryItems already triggered, skipping call from init.")
-            }
-        } catch (t: Throwable) {
-            Log.e("ViewModel", "Error accessing/initializing repository in init", t)
-            _uiState.value = UiState.Error(t)
-            initialLoadTriggered = true
-        }
+        loadLibraryItems()
     }
 
-    fun loadLibraryItems(forceRetry: Boolean = false, scrollToItemId: Int? = null) {
-        Log.d("ViewModel", "+++ Entering loadLibraryItems function. forceRetry=$forceRetry, scrollToItemId=$scrollToItemId")
-
-        Log.d("ViewModel", "Current state before launch check: ${_uiState.value::class.java.simpleName}")
-        if (_uiState.value is UiState.Loading && !forceRetry) {
-            Log.d("ViewModel", "Load already in progress and not forceRetry. Skipping.")
-            return
-        }
-        if (_uiState.value is UiState.Error && !forceRetry) {
-            Log.d("ViewModel", "In Error state and not forceRetry. Skipping.")
-            return
-        }
-
+    fun loadLibraryItems(scrollToItemId: Int? = null) {
         if (loadJob?.isActive == true) {
-            Log.d("ViewModel", "Previous job is active, cancelling...")
-            loadJob?.cancel()
-        } else {
-            Log.d("ViewModel", "No active previous job to cancel.")
+            return
         }
-        Log.d("ViewModel", "Preparing to launch new coroutine.")
 
-        try {
-            _uiState.value = UiState.Loading
-            Log.d("ViewModel", ">>> State set to Loading (before launch)")
+        loadJob = viewModelScope.launch {
+            if (_uiState.value !is UiState.Loading) {
+                _uiState.value = UiState.Loading
+            }
 
-            loadJob = viewModelScope.launch {
-                Log.d("ViewModel", ">>> viewModelScope.launch **STARTED**")
-                val coroutineStartTime = System.currentTimeMillis()
-
-                try {
-                    Log.d("ViewModel", "Coroutine: Current state is ${_uiState.value::class.java.simpleName}")
-                    Log.d("ViewModel", "Coroutine: Calling repository.getItems()")
-                    val items = repository.getItems()
-                    Log.d("ViewModel", "Coroutine: repository.getItems() returned ${items.size} items")
-
-                    val elapsedTime = System.currentTimeMillis() - coroutineStartTime
-                    Log.d("ViewModel", "Coroutine: Data loaded in $elapsedTime ms.")
-                    if (elapsedTime < 1000) {
-                        val delayNeeded = 1000 - elapsedTime
-                        Log.d("ViewModel", "Coroutine: Delaying for shimmer: $delayNeeded ms")
-                        delay(delayNeeded)
-                    } else {
-                        Log.d("ViewModel", "Coroutine: No shimmer delay needed (elapsed: $elapsedTime ms)")
-                    }
-
-                    if (isActive) {
-                        _uiState.value = UiState.Success(items)
-                        Log.d("ViewModel", "Coroutine: State changed to Success with ${items.size} items")
-
-                        scrollToItemId?.let { targetId ->
-                            val position = items.indexOfFirst { it.id == targetId }
-                            if (position != -1) {
-                                Log.d("ViewModel", "Requesting scroll to added item ID $targetId at position $position")
-                                _scrollToPosition.emit(position)
-                            } else {
-                                Log.w("ViewModel", "Scroll target ID $targetId not found in the list after load.")
-                            }
+            runCatching {
+                repository.getItems()
+            }.onSuccess { items ->
+                if (isActive) {
+                    _uiState.value = UiState.Success(items)
+                    scrollToItemId?.let { targetId ->
+                        val position = items.indexOfFirst { it.id == targetId }
+                        if (position != -1) {
+                            _scrollToPosition.emit(position)
                         }
-
-                    } else {
-                        Log.d("ViewModel", "Coroutine: Job cancelled before setting Success state.")
                     }
-
-                } catch (e: IOException) {
-                    Log.e("ViewModel", "Coroutine: IOException caught: ${e.message}", e)
-                    val errorTime = System.currentTimeMillis()
-                    val elapsedTime = errorTime - coroutineStartTime
-                    if (elapsedTime < 1000) {
-                        Log.d("ViewModel", "Coroutine: Error occurred quickly, delaying for shimmer (IOException)")
-                        delay(1000 - elapsedTime)
+                }
+            }.onFailure { exception ->
+                if (isActive) {
+                    if (exception is CancellationException) {
+                        throw exception
                     }
-                    if (isActive) {
-                        _uiState.value = UiState.Error(e)
-                        Log.d("ViewModel", "Coroutine: State changed to Error (IOException)")
-                    } else {
-                        Log.d("ViewModel", "Coroutine: Job cancelled before setting Error state (IOException).")
-                    }
-                } catch (t: Throwable) {
-                    Log.e("ViewModel", "!!! Coroutine: Uncaught Throwable inside launch !!!", t)
-                    val errorTime = System.currentTimeMillis()
-                    val elapsedTime = errorTime - coroutineStartTime
-                    if (elapsedTime < 1000) {
-                        Log.d("ViewModel", "Coroutine: Error occurred quickly, delaying for shimmer (Throwable)")
-                        delay(1000 - elapsedTime)
-                    }
-                    if (isActive) {
-                        _uiState.value = UiState.Error(t)
-                        Log.d("ViewModel", "Coroutine: State changed to Error (Throwable)")
-                    } else {
-                        Log.d("ViewModel", "Coroutine: Job cancelled before setting Error state (Throwable).")
-                    }
-                } finally {
-                    Log.d("ViewModel", "<<< Coroutine execution finished (normally or exceptionally).")
+                    _uiState.value = UiState.Error(exception)
                 }
             }
-            Log.d("ViewModel", "--- viewModelScope.launch call finished (coroutine launched). Job: $loadJob, isActive: ${loadJob?.isActive}")
-
-        } catch (t: Throwable) {
-            Log.e("ViewModel", "!!! CRITICAL ERROR before or during launch !!!", t)
-            _uiState.value = UiState.Error(t)
         }
     }
 
     fun setSelectedItem(item: LibraryItem?) {
-        Log.d("ViewModel", "setSelectedItem called with item: ${item?.name ?: "null"}")
-        if (_isAddingItem.value == true) {
-            Log.d("ViewModel", "Selecting item while adding mode was active. Cancelling add mode.")
+        if (_isAddingItem.value) {
             _isAddingItem.value = false
             _addItemType.value = null
         }
@@ -196,9 +89,7 @@ class LibraryViewModel : ViewModel() {
     }
 
     fun startAddItem(itemType: String) {
-        Log.d("ViewModel", "startAddItem called with type: $itemType")
         if (_selectedItem.value != null) {
-            Log.d("ViewModel", "Clearing selected item before starting add.")
             _selectedItem.value = null
         }
         _addItemType.value = itemType
@@ -206,57 +97,43 @@ class LibraryViewModel : ViewModel() {
     }
 
     fun completeAddItem() {
-        Log.d("ViewModel", "completeAddItem called.")
-        if (_isAddingItem.value == true) {
+        if (_isAddingItem.value) {
             _addItemType.value = null
             _isAddingItem.value = false
-        } else {
-            Log.w("ViewModel", "completeAddItem called but was not in adding mode.")
         }
     }
 
     fun addNewItem(item: LibraryItem) {
         viewModelScope.launch {
-            Log.d("ViewModel", "addNewItem started for: ${item.name}")
-            try {
+            runCatching {
                 repository.addItem(item)
-                Log.d("ViewModel", "Item added to repo. Reloading list and requesting scroll.")
-                _toastMessageChannel.send("Элемент '${item.name}' добавлен.")
-                loadLibraryItems(forceRetry = true, scrollToItemId = item.id)
-            } catch (e: Exception) {
-                Log.e("ViewModel", "Error adding item: ${e.message}", e)
-                _toastMessageChannel.send("Ошибка добавления элемента: ${e.message}")
+            }.onSuccess {
+                _toastMessage.tryEmit("Элемент '${item.name}' добавлен.")
+                loadLibraryItems(scrollToItemId = item.id)
+            }.onFailure { exception ->
+                if (exception is CancellationException) throw exception
+                _toastMessage.tryEmit("Ошибка добавления элемента: ${exception.message}")
             }
         }
     }
 
     fun deleteItemAtPosition(position: Int) {
         viewModelScope.launch {
-            Log.d("ViewModel", "deleteItemAtPosition started for pos: $position")
-            val currentList = (_uiState.value as? UiState.Success)?.data
-            if (currentList != null && position in currentList.indices) {
-                val itemToDelete = currentList[position]
-                Log.d("ViewModel", "Attempting to remove item: ${itemToDelete.name}")
-                try {
+            val currentItems = (_uiState.value as? UiState.Success)?.data
+            if (currentItems != null && position in currentItems.indices) {
+                val itemToDelete = currentItems[position]
+                runCatching {
                     repository.removeItem(itemToDelete)
-                    Log.d("ViewModel", "Item removed from repo. Reloading list.")
-                    _toastMessageChannel.send("Элемент '${itemToDelete.name}' удален.")
-                    loadLibraryItems(forceRetry = true)
-                } catch (e: Exception) {
-                    Log.e("ViewModel", "Error removing item: ${e.message}", e)
-                    _toastMessageChannel.send("Ошибка удаления элемента: ${e.message}")
+                }.onSuccess {
+                    _toastMessage.tryEmit("Элемент '${itemToDelete.name}' удален.")
+                    loadLibraryItems()
+                }.onFailure { exception ->
+                    if (exception is CancellationException) throw exception
+                    _toastMessage.tryEmit("Ошибка удаления элемента: ${exception.message}")
                 }
             } else {
-                Log.w("ViewModel", "Could not remove item at position $position. List state: ${_uiState.value::class.java.simpleName}, list size: ${currentList?.size ?: "N/A"}")
-                _toastMessageChannel.send("Не удалось удалить элемент: список не загружен или позиция неверна.")
+                _toastMessage.tryEmit("Не удалось удалить элемент: список не загружен или позиция неверна.")
             }
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.d("ViewModel", "onCleared called, cancelling job and closing channel.")
-        loadJob?.cancel()
-        _toastMessageChannel.close()
     }
 }

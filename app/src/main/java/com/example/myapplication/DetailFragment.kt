@@ -1,7 +1,6 @@
 package com.example.myapplication
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -50,14 +49,12 @@ class DetailFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        Log.d("DetailFragment", "onCreateView.")
         _binding = ActivityDetailBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d("DetailFragment", "onViewCreated")
 
         viewModel = ViewModelProvider(requireActivity())[LibraryViewModel::class.java]
 
@@ -70,12 +67,10 @@ class DetailFragment : Fragment() {
                 @Suppress("DEPRECATION")
                 it.getParcelable(ARG_ITEM)
             }
-            Log.d("DetailFragment", "Arguments received. Editable: $editable, Type: $itemType, Item: ${item?.name ?: "null"}")
             if (item != null) {
                 setupItemData(item)
             }
         } ?: run {
-            Log.e("DetailFragment", "Arguments are null! Cannot setup fragment.")
             Toast.makeText(context, "Ошибка загрузки деталей", Toast.LENGTH_SHORT).show()
             parentFragmentManager.popBackStack()
             return
@@ -86,7 +81,6 @@ class DetailFragment : Fragment() {
     }
 
     private fun setupItemData(item: LibraryItem) {
-        Log.d("DetailFragment", "Setting up data for item: ${item.name}")
         binding.nameEditText.setText(item.name)
         binding.availableEditText.setText(if (item.available) "Да" else "Нет")
 
@@ -106,7 +100,6 @@ class DetailFragment : Fragment() {
     }
 
     private fun setupUI() {
-        Log.d("DetailFragment", "Setting up UI. Editable: $editable, Type: $itemType")
         val iconResId = when (itemType) {
             TYPE_BOOK -> R.drawable.ic_book
             TYPE_DISK -> R.drawable.ic_disk
@@ -150,17 +143,18 @@ class DetailFragment : Fragment() {
             constraintSet.connect(
                 binding.availableEditText.id, ConstraintSet.TOP,
                 bottomFieldId, ConstraintSet.BOTTOM,
-                requireContext().dpToPx(8)
+                requireContext().dpToPx(4)
             )
         } else {
-            val fallbackId = if (itemType == TYPE_BOOK || itemType == TYPE_DISK || itemType == TYPE_NEWSPAPER)
-                binding.nameEditText.id else binding.iconImageView.id
+            val fallbackId = when {
+                binding.nameEditText.isVisible -> binding.nameEditText.id
+                else -> binding.iconImageView.id
+            }
             constraintSet.connect(
                 binding.availableEditText.id, ConstraintSet.TOP,
                 fallbackId, ConstraintSet.BOTTOM,
-                requireContext().dpToPx(8)
+                requireContext().dpToPx(4)
             )
-            Log.w("DetailFragment", "Bottom field for constraints ($bottomFieldId) is not visible, falling back to $fallbackId")
         }
 
         constraintSet.connect(
@@ -177,10 +171,8 @@ class DetailFragment : Fragment() {
             binding.saveButton.isVisible = false
             return
         }
-        Log.d("DetailFragment", "Setting up Save button listener.")
 
         binding.saveButton.setOnClickListener {
-            Log.d("DetailFragment", "Save button clicked.")
             var newItem: LibraryItem? = null
             binding.nameEditText.error = null
             binding.availableEditText.error = null
@@ -246,17 +238,14 @@ class DetailFragment : Fragment() {
                         newItem = Disk(UniqueIdGenerator.getUniqueId(), available, name, diskType)
                     }
                     else -> {
-                        Log.e("DetailFragment", "Attempting to save unknown item type: $itemType")
                         Toast.makeText(context, "Ошибка: Неизвестный тип элемента", Toast.LENGTH_SHORT).show()
                         return@setOnClickListener
                     }
                 }
             } catch (e: NumberFormatException) {
-                Log.e("DetailFragment", "NumberFormatException during save validation", e)
                 Toast.makeText(context, "Ошибка ввода числовых данных", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             } catch (e: Exception) {
-                Log.e("DetailFragment", "Generic exception during save validation", e)
                 Toast.makeText(context, "Произошла ошибка при проверке данных", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -264,20 +253,17 @@ class DetailFragment : Fragment() {
             newItem?.let { itemToAdd ->
                 binding.saveButton.isEnabled = false
                 viewLifecycleOwner.lifecycleScope.launch {
-                    Log.d("DetailFragment", "Calling viewModel.addNewItem for ${itemToAdd.name}")
                     viewModel.addNewItem(itemToAdd)
 
-                    Log.d("DetailFragment", "Calling viewModel.completeAddItem after add.")
                     viewModel.completeAddItem()
 
                     if (!isTwoPaneMode()) {
-                        Log.d("DetailFragment", "Popping back stack after save (single-pane).")
                         parentFragmentManager.popBackStack()
                     }
                 }
             } ?: run {
-                Log.e("DetailFragment", "newItem is null after validation. Cannot save.")
                 Toast.makeText(context, "Ошибка: Не удалось создать элемент", Toast.LENGTH_SHORT).show()
+                binding.saveButton.isEnabled = true
             }
         }
     }
@@ -288,7 +274,6 @@ class DetailFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        Log.d("DetailFragment", "onDestroyView")
         _binding = null
     }
 }
