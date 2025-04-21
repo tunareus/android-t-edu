@@ -106,9 +106,11 @@ class ListFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.toastMessage.collectLatest { message ->
+            viewModel.toastMessageFlow.collect { message ->
                 Log.d("ListFragment", "Received toast message: $message")
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                context?.let { ctx ->
+                    Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -130,16 +132,14 @@ class ListFragment : Fragment() {
         when (state) {
             is UiState.Idle -> {
                 Log.d("ListFragment", "Handling Idle state (showing shimmer)")
-                binding.shimmerLayout.startShimmer()
+                if (!binding.shimmerLayout.isShimmerStarted) binding.shimmerLayout.startShimmer()
                 binding.shimmerLayout.isVisible = true
                 binding.recyclerView.isVisible = false
                 binding.errorLayout.isVisible = false
             }
             is UiState.Loading -> {
                 Log.d("ListFragment", "Handling Loading state (showing shimmer)")
-                if (!binding.shimmerLayout.isShimmerStarted) {
-                    binding.shimmerLayout.startShimmer()
-                }
+                if (!binding.shimmerLayout.isShimmerStarted) binding.shimmerLayout.startShimmer()
                 binding.shimmerLayout.isVisible = true
                 binding.recyclerView.isVisible = false
                 binding.errorLayout.isVisible = false

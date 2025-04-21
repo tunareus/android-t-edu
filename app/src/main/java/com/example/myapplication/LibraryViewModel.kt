@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -44,11 +46,18 @@ class LibraryViewModel : ViewModel() {
     private val _selectedItem = MutableLiveData<LibraryItem?>()
     val selectedItem: LiveData<LibraryItem?> get() = _selectedItem
 
+    private val _isAddingItem = MutableLiveData(false)
+    val isAddingItem: LiveData<Boolean> get() = _isAddingItem
+
+    private val _addItemType = MutableLiveData<String?>(null)
+    val addItemType: LiveData<String?> get() = _addItemType
+
+    private val _toastMessageChannel = Channel<String>(Channel.BUFFERED)
+    val toastMessageFlow = _toastMessageChannel.receiveAsFlow()
+
     private val _scrollToPosition = MutableSharedFlow<Int>(replay = 0, extraBufferCapacity = 1)
     val scrollToPosition: SharedFlow<Int> = _scrollToPosition.asSharedFlow()
 
-    private val _toastMessage = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 1)
-    val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     private var loadJob: Job? = null
     private var initialLoadTriggered = false
@@ -105,15 +114,11 @@ class LibraryViewModel : ViewModel() {
                 try {
                     Log.d("ViewModel", "Coroutine: Current state is ${_uiState.value::class.java.simpleName}")
                     Log.d("ViewModel", "Coroutine: Calling repository.getItems()")
-
                     val items = repository.getItems()
-
                     Log.d("ViewModel", "Coroutine: repository.getItems() returned ${items.size} items")
 
                     val elapsedTime = System.currentTimeMillis() - coroutineStartTime
-
                     Log.d("ViewModel", "Coroutine: Data loaded in $elapsedTime ms.")
-
                     if (elapsedTime < 1000) {
                         val delayNeeded = 1000 - elapsedTime
                         Log.d("ViewModel", "Coroutine: Delaying for shimmer: $delayNeeded ms")
@@ -182,7 +187,32 @@ class LibraryViewModel : ViewModel() {
 
     fun setSelectedItem(item: LibraryItem?) {
         Log.d("ViewModel", "setSelectedItem called with item: ${item?.name ?: "null"}")
+        if (_isAddingItem.value == true) {
+            Log.d("ViewModel", "Selecting item while adding mode was active. Cancelling add mode.")
+            _isAddingItem.value = false
+            _addItemType.value = null
+        }
         _selectedItem.value = item
+    }
+
+    fun startAddItem(itemType: String) {
+        Log.d("ViewModel", "startAddItem called with type: $itemType")
+        if (_selectedItem.value != null) {
+            Log.d("ViewModel", "Clearing selected item before starting add.")
+            _selectedItem.value = null
+        }
+        _addItemType.value = itemType
+        _isAddingItem.value = true
+    }
+
+    fun completeAddItem() {
+        Log.d("ViewModel", "completeAddItem called.")
+        if (_isAddingItem.value == true) {
+            _addItemType.value = null
+            _isAddingItem.value = false
+        } else {
+            Log.w("ViewModel", "completeAddItem called but was not in adding mode.")
+        }
     }
 
     fun addNewItem(item: LibraryItem) {
@@ -191,12 +221,11 @@ class LibraryViewModel : ViewModel() {
             try {
                 repository.addItem(item)
                 Log.d("ViewModel", "Item added to repo. Reloading list and requesting scroll.")
-                _toastMessage.emit("Элемент '${item.name}' добавлен.")
+                _toastMessageChannel.send("Элемент '${item.name}' добавлен.")
                 loadLibraryItems(forceRetry = true, scrollToItemId = item.id)
-
             } catch (e: Exception) {
                 Log.e("ViewModel", "Error adding item: ${e.message}", e)
-                _toastMessage.emit("Ошибка добавления элемента: ${e.message}")
+                _toastMessageChannel.send("Ошибка добавления элемента: ${e.message}")
             }
         }
     }
@@ -211,22 +240,23 @@ class LibraryViewModel : ViewModel() {
                 try {
                     repository.removeItem(itemToDelete)
                     Log.d("ViewModel", "Item removed from repo. Reloading list.")
-                    _toastMessage.emit("Элемент '${itemToDelete.name}' удален.")
+                    _toastMessageChannel.send("Элемент '${itemToDelete.name}' удален.")
                     loadLibraryItems(forceRetry = true)
                 } catch (e: Exception) {
                     Log.e("ViewModel", "Error removing item: ${e.message}", e)
-                    _toastMessage.emit("Ошибка удаления элемента: ${e.message}")
+                    _toastMessageChannel.send("Ошибка удаления элемента: ${e.message}")
                 }
             } else {
                 Log.w("ViewModel", "Could not remove item at position $position. List state: ${_uiState.value::class.java.simpleName}, list size: ${currentList?.size ?: "N/A"}")
-                _toastMessage.emit("Не удалось удалить элемент: список не загружен или позиция неверна.")
+                _toastMessageChannel.send("Не удалось удалить элемент: список не загружен или позиция неверна.")
             }
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        Log.d("ViewModel", "onCleared called, cancelling job.")
+        Log.d("ViewModel", "onCleared called, cancelling job and closing channel.")
         loadJob?.cancel()
+        _toastMessageChannel.close()
     }
 }
