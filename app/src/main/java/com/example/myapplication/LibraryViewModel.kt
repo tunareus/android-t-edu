@@ -4,14 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 
 sealed class UiState {
     data object Loading : UiState()
@@ -35,7 +36,11 @@ class LibraryViewModel : ViewModel() {
     private val _addItemType = MutableStateFlow<String?>(null)
     val addItemType: StateFlow<String?> = _addItemType.asStateFlow()
 
-    private val _toastMessage = MutableSharedFlow<String>(replay = 0)
+    private val _toastMessage = MutableSharedFlow<String>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     private val _scrollToPosition = MutableSharedFlow<Int>(replay = 0)
@@ -48,9 +53,7 @@ class LibraryViewModel : ViewModel() {
     }
 
     fun loadLibraryItems(scrollToItemId: Int? = null) {
-        if (loadJob?.isActive == true) {
-            return
-        }
+        loadJob?.cancel()
 
         loadJob = viewModelScope.launch {
             if (_uiState.value !is UiState.Loading) {
@@ -60,22 +63,20 @@ class LibraryViewModel : ViewModel() {
             runCatching {
                 repository.getItems()
             }.onSuccess { items ->
-                if (isActive) {
-                    _uiState.value = UiState.Success(items)
-                    scrollToItemId?.let { targetId ->
-                        val position = items.indexOfFirst { it.id == targetId }
-                        if (position != -1) {
-                            _scrollToPosition.emit(position)
-                        }
+                ensureActive()
+                _uiState.value = UiState.Success(items)
+                scrollToItemId?.let { targetId ->
+                    val position = items.indexOfFirst { it.id == targetId }
+                    if (position != -1) {
+                        _scrollToPosition.emit(position)
                     }
                 }
             }.onFailure { exception ->
-                if (isActive) {
-                    if (exception is CancellationException) {
-                        throw exception
-                    }
-                    _uiState.value = UiState.Error(exception)
+                ensureActive()
+                if (exception is CancellationException) {
+                    throw exception
                 }
+                _uiState.value = UiState.Error(exception)
             }
         }
     }
