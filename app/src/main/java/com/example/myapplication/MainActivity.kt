@@ -1,26 +1,32 @@
 package com.example.myapplication
 
-import android.content.DialogInterface
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.commit
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
+import com.example.myapplication.data.local.AppDatabase
+import com.example.myapplication.data.settings.SettingsRepository
 import com.example.myapplication.databinding.ActivityMainBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.lang.IllegalArgumentException
 
 class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
     private val binding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+
     private val libraryViewModel: LibraryViewModel by lazy {
-        ViewModelProvider(this)[LibraryViewModel::class.java]
+        val database = AppDatabase.getDatabase(applicationContext, lifecycleScope)
+        val settingsRepository = SettingsRepository(applicationContext)
+        val repository = LibraryRepository(database.libraryItemDao())
+        val factory = LibraryViewModel.LibraryViewModelFactory(repository, settingsRepository)
+        ViewModelProvider(this, factory)[LibraryViewModel::class.java]
     }
+
     private var isTwoPaneMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,39 +43,34 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
         setupViewModelObservers()
         setupInitialUi(savedInstanceState)
         setupOnBackPressed()
-
     }
 
     private fun restoreStateAfterRotation() {
         if (isTwoPaneMode) {
             if (libraryViewModel.isAddingItem.value) {
-                libraryViewModel.addItemType.value?.let { type ->
-                    replaceDetailWithAddFragment(type)
-                }
-            } else if (libraryViewModel.selectedItem.value != null) {
-                libraryViewModel.selectedItem.value?.let { item ->
-                    replaceDetailFragment(item)
-                }
-            } else {
-                replaceWithEmptyFragment()
-            }
+                libraryViewModel.addItemType.value?.let { replaceDetailWithAddFragment(it) }
+            } else libraryViewModel.selectedItem.value?.let {
+                replaceDetailFragment(it)
+            } ?: replaceWithEmptyFragment()
         } else {
+            val navController = try { findNavController(R.id.nav_host_fragment) } catch (e: Exception) { null }
+            if (navController == null) return
+
             if (libraryViewModel.isAddingItem.value) {
                 libraryViewModel.addItemType.value?.let { type ->
-                    navigateToDetailFragment(editable = true, itemType = type, item = null, forceReset = true)
+                    if (navController.currentDestination?.id != R.id.detailFragment) {
+                        navigateToDetailFragment(editable = true, itemType = type, item = null)
+                    }
                 }
             } else if (libraryViewModel.selectedItem.value != null) {
                 libraryViewModel.selectedItem.value?.let { item ->
-                    navigateToDetailFragment(editable = false, item = item, forceReset = true)
+                    if (navController.currentDestination?.id != R.id.detailFragment) {
+                        navigateToDetailFragment(editable = false, item = item)
+                    }
                 }
             } else {
-                try {
-                    val navController = findNavController(R.id.nav_host_fragment)
-                    if (navController.currentDestination?.id != R.id.listFragment) {
-                        navController.popBackStack(R.id.listFragment, false)
-                    }
-                } catch (e: Exception) {
-                    //
+                if (navController.currentDestination?.id != R.id.listFragment) {
+                    navController.popBackStack(R.id.listFragment, false)
                 }
             }
         }
@@ -78,15 +79,11 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
     private fun setupViewModelObservers() {
         lifecycleScope.launch {
             libraryViewModel.selectedItem.collectLatest { item ->
-                if (isTwoPaneMode) {
-                    if (!libraryViewModel.isAddingItem.value) {
-                        if (item != null) {
-                            replaceDetailFragment(item)
-                        } else {
-                            replaceWithEmptyFragment()
-                        }
+                if (isTwoPaneMode && !libraryViewModel.isAddingItem.value) {
+                    if (item != null) {
+                        replaceDetailFragment(item)
                     } else {
-                        //
+                        replaceWithEmptyFragment()
                     }
                 }
             }
@@ -100,8 +97,8 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
                             replaceDetailWithAddFragment(type)
                         }
                     } else {
-                        libraryViewModel.selectedItem.value?.let { item ->
-                            replaceDetailFragment(item)
+                        libraryViewModel.selectedItem.value?.let {
+                            replaceDetailFragment(it)
                         } ?: replaceWithEmptyFragment()
                     }
                 }
@@ -117,12 +114,10 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
                 }
             }
             if (savedInstanceState == null) {
-                if (libraryViewModel.isAddingItem.value) {
-                    libraryViewModel.addItemType.value?.let { replaceDetailWithAddFragment(it) }
-                } else if (libraryViewModel.selectedItem.value != null) {
-                    replaceDetailFragment(libraryViewModel.selectedItem.value!!)
-                } else {
-                    replaceWithEmptyFragment()
+                when {
+                    libraryViewModel.isAddingItem.value -> libraryViewModel.addItemType.value?.let { replaceDetailWithAddFragment(it) }
+                    libraryViewModel.selectedItem.value != null -> replaceDetailFragment(libraryViewModel.selectedItem.value!!)
+                    else -> replaceWithEmptyFragment()
                 }
             }
         }
@@ -131,71 +126,71 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
     private fun setupOnBackPressed() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                val navController = try { findNavController(R.id.nav_host_fragment) } catch (e: Exception) { null }
+
                 if (isTwoPaneMode) {
-                    if (libraryViewModel.isAddingItem.value) {
-                        libraryViewModel.completeAddItem()
-                    } else if (libraryViewModel.selectedItem.value != null) {
-                        libraryViewModel.setSelectedItem(null)
-                    } else {
-                        finish()
+                    when {
+                        libraryViewModel.isAddingItem.value -> libraryViewModel.completeAddItem()
+                        libraryViewModel.selectedItem.value != null -> libraryViewModel.setSelectedItem(null)
+                        else -> finish()
                     }
-                } else {
-                    val navController = findNavController(R.id.nav_host_fragment)
+                } else if (navController != null) {
                     if (navController.currentDestination?.id == R.id.detailFragment) {
                         if (libraryViewModel.isAddingItem.value) {
                             libraryViewModel.completeAddItem()
-                        } else {
+                        } else if (libraryViewModel.selectedItem.value != null) {
                             libraryViewModel.setSelectedItem(null)
                         }
                         if (!navController.popBackStack()) {
                             finish()
                         }
-                    } else if (navController.currentDestination?.id == R.id.listFragment) {
-                        finish()
                     } else {
-                        if (!navController.popBackStack()) {
+                        if (isEnabled) {
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        } else {
                             finish()
                         }
                     }
+                } else {
+                    finish()
                 }
             }
         })
     }
 
     override fun onItemSelected(item: LibraryItem) {
-        libraryViewModel.setSelectedItem(item)
         if (!isTwoPaneMode) {
-            navigateToDetailFragment(editable = false, item = item, forceReset = false)
+            navigateToDetailFragment(editable = false, item = item)
         }
     }
 
     override fun onAddItemClicked() {
         val optionTypes = arrayOf(
-            DetailFragment.TYPE_BOOK,
-            DetailFragment.TYPE_NEWSPAPER,
-            DetailFragment.TYPE_DISK
+            DetailFragment.TYPE_BOOK, DetailFragment.TYPE_NEWSPAPER, DetailFragment.TYPE_DISK
         )
-        val optionsRu = arrayOf("Книга", "Газета", "Диск")
+        val optionsRu = arrayOf(
+            getString(R.string.item_type_book),
+            getString(R.string.item_type_newspaper),
+            getString(R.string.item_type_disk)
+        )
 
         AlertDialog.Builder(this)
-            .setTitle("Выберите тип элемента для добавления")
-            .setItems(optionsRu) { _: DialogInterface, which: Int ->
+            .setTitle(R.string.dialog_add_item_title)
+            .setItems(optionsRu) { _, which ->
                 val itemType = optionTypes[which]
                 libraryViewModel.startAddItem(itemType)
                 if (!isTwoPaneMode) {
-                    navigateToDetailFragment(editable = true, itemType = itemType, item = null, forceReset = false)
+                    navigateToDetailFragment(editable = true, itemType = itemType, item = null)
                 }
             }
             .show()
     }
 
-    private fun navigateToDetailFragment(editable: Boolean, item: LibraryItem?, itemType: String? = null, forceReset: Boolean) {
+    private fun navigateToDetailFragment(editable: Boolean, item: LibraryItem?, itemType: String? = null) {
         if (isTwoPaneMode) return
 
-        val type = itemType ?: item?.let { getItemType(it) }
-        if (type.isNullOrEmpty()) {
-            return
-        }
+        val type = itemType ?: item?.let { getItemType(it) } ?: return
 
         val bundle = Bundle().apply {
             putBoolean("editable", editable)
@@ -205,55 +200,18 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
         try {
             val navController = findNavController(R.id.nav_host_fragment)
-
-            if (forceReset || navController.currentDestination?.id == R.id.detailFragment) {
-                val listFragmentInBackStack = navController.previousBackStackEntry?.destination?.id == R.id.listFragment
-                if (listFragmentInBackStack) {
-                    navController.popBackStack(R.id.listFragment, false)
-                    navController.currentBackStackEntry?.lifecycle?.addObserver(object : DefaultLifecycleObserver {
-                        override fun onResume(owner: LifecycleOwner) {
-                            owner.lifecycle.removeObserver(this)
-                            if (navController.currentDestination?.id == R.id.listFragment) {
-                                navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
-                            } else {
-                                //
-                            }
-                        }
-                    })
-                } else {
-                    try {
-                        navController.popBackStack(R.id.listFragment, true)
-                        navController.navigate(R.id.listFragment)
-                        navController.currentBackStackEntry?.lifecycle?.addObserver(object : DefaultLifecycleObserver {
-                            override fun onResume(owner: LifecycleOwner) {
-                                owner.lifecycle.removeObserver(this)
-                                navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
-                            }
-                        })
-
-                    } catch (navEx: Exception) {
-                        //
-                    }
-                }
-            } else if (navController.currentDestination?.id == R.id.listFragment) {
+            if (navController.currentDestination?.id == R.id.listFragment) {
                 navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
             } else {
                 //
             }
-        } catch (e: Exception) {
-            try {
-                findNavController(R.id.nav_host_fragment).popBackStack(R.id.listFragment, false)
-            } catch (_: Exception) {}
+        } catch (e: Exception) { //
         }
     }
 
     private fun replaceDetailFragment(item: LibraryItem) {
         if (!isTwoPaneMode) return
-        val fragment = DetailFragment.newInstance(
-            editable = false,
-            itemType = getItemType(item),
-            item = item
-        )
+        val fragment = DetailFragment.newInstance(editable = false, itemType = getItemType(item), item = item)
         supportFragmentManager.commit(allowStateLoss = true) {
             replace(R.id.detailContainer, fragment, "DetailFragmentTag")
         }
@@ -261,11 +219,7 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
     private fun replaceDetailWithAddFragment(itemType: String) {
         if (!isTwoPaneMode) return
-        val fragment = DetailFragment.newInstance(
-            editable = true,
-            itemType = itemType,
-            item = null
-        )
+        val fragment = DetailFragment.newInstance(editable = true, itemType = itemType, item = null)
         supportFragmentManager.commit(allowStateLoss = true) {
             replace(R.id.detailContainer, fragment, "AddFragmentTag")
         }
@@ -277,8 +231,6 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
             supportFragmentManager.commit(allowStateLoss = true) {
                 replace(R.id.detailContainer, EmptyDetailFragment(), "EmptyFragmentTag")
             }
-        } else {
-            //
         }
     }
 
@@ -286,8 +238,6 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
         is Book -> DetailFragment.TYPE_BOOK
         is Newspaper -> DetailFragment.TYPE_NEWSPAPER
         is Disk -> DetailFragment.TYPE_DISK
-        else -> {
-            ""
-        }
+        else -> throw IllegalArgumentException("Unknown LibraryItem type: ${item::class.java.name}")
     }
 }

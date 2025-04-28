@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,8 +12,12 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
+import com.example.myapplication.data.local.AppDatabase
+import com.example.myapplication.data.settings.SettingsRepository
 import com.example.myapplication.databinding.ActivityDetailBinding
 import kotlinx.coroutines.launch
+import com.example.myapplication.util.dpToPx
 
 class DetailFragment : Fragment() {
 
@@ -43,6 +48,12 @@ class DetailFragment : Fragment() {
     private var editable: Boolean = false
     private var itemType: String = TYPE_BOOK
     private lateinit var viewModel: LibraryViewModel
+    private lateinit var settingsRepository: SettingsRepository
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        settingsRepository = SettingsRepository(requireContext().applicationContext)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -56,7 +67,10 @@ class DetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewModel = ViewModelProvider(requireActivity())[LibraryViewModel::class.java]
+        val database = AppDatabase.getDatabase(requireContext().applicationContext, lifecycleScope)
+        val repository = LibraryRepository(database.libraryItemDao())
+        val factory = LibraryViewModel.LibraryViewModelFactory(repository, settingsRepository)
+        viewModel = ViewModelProvider(requireActivity(), factory)[LibraryViewModel::class.java]
 
         arguments?.let {
             editable = it.getBoolean(ARG_EDITABLE, false)
@@ -67,12 +81,15 @@ class DetailFragment : Fragment() {
                 @Suppress("DEPRECATION")
                 it.getParcelable(ARG_ITEM)
             }
-            if (item != null) {
+            if (!editable && item != null) {
+                setupItemData(item)
+            } else if (editable && item != null) {
                 setupItemData(item)
             }
-        } ?: run {
-            Toast.makeText(context, "Ошибка загрузки деталей", Toast.LENGTH_SHORT).show()
-            parentFragmentManager.popBackStack()
+        } ?: if (editable) {
+        } else {
+            Toast.makeText(context, R.string.error_loading_details, Toast.LENGTH_SHORT).show()
+            findNavController().popBackStack()
             return
         }
 
@@ -82,7 +99,7 @@ class DetailFragment : Fragment() {
 
     private fun setupItemData(item: LibraryItem) {
         binding.nameEditText.setText(item.name)
-        binding.availableEditText.setText(if (item.available) "Да" else "Нет")
+        binding.availableEditText.setText(if (item.available) R.string.yes else R.string.no)
 
         when (item) {
             is Book -> {
@@ -124,6 +141,12 @@ class DetailFragment : Fragment() {
         ).forEach { it.isEnabled = isEnabled }
 
         binding.saveButton.isVisible = editable
+
+        if (!editable) {
+            binding.availableEditText.hint = getString(R.string.availability_status_hint)
+        } else {
+            binding.availableEditText.hint = getString(R.string.available_hint_editable)
+        }
     }
 
     private fun updateConstraints() {
@@ -146,10 +169,7 @@ class DetailFragment : Fragment() {
                 requireContext().dpToPx(4)
             )
         } else {
-            val fallbackId = when {
-                binding.nameEditText.isVisible -> binding.nameEditText.id
-                else -> binding.iconImageView.id
-            }
+            val fallbackId = binding.nameEditText.id
             constraintSet.connect(
                 binding.availableEditText.id, ConstraintSet.TOP,
                 fallbackId, ConstraintSet.BOTTOM,
@@ -171,9 +191,9 @@ class DetailFragment : Fragment() {
             binding.saveButton.isVisible = false
             return
         }
+        binding.saveButton.isVisible = true
 
         binding.saveButton.setOnClickListener {
-            var newItem: LibraryItem? = null
             binding.nameEditText.error = null
             binding.availableEditText.error = null
             binding.pagesEditText.error = null
@@ -186,84 +206,82 @@ class DetailFragment : Fragment() {
             val availableStr = binding.availableEditText.text.toString().trim()
 
             if (name.isEmpty()) {
-                binding.nameEditText.error = "Введите название"
+                binding.nameEditText.error = getString(R.string.error_validation_name_empty)
                 return@setOnClickListener
             }
+
             val available = when {
-                availableStr.equals("Да", ignoreCase = true) -> true
-                availableStr.equals("Нет", ignoreCase = true) -> false
+                availableStr.equals(getString(R.string.yes), ignoreCase = true) -> true
+                availableStr.equals(getString(R.string.no), ignoreCase = true) -> false
                 else -> {
-                    binding.availableEditText.error = "Введите Да или Нет"
+                    binding.availableEditText.error = getString(R.string.error_validation_available_format)
                     return@setOnClickListener
                 }
             }
 
+            val newItem: LibraryItem
+
             try {
-                when (itemType) {
+                newItem = when (itemType) {
                     TYPE_BOOK -> {
                         val pagesStr = binding.pagesEditText.text.toString()
                         val pages = pagesStr.toIntOrNull()
                         if (pages == null || pages <= 0) {
-                            binding.pagesEditText.error = "Введите корректное число страниц (> 0)"
+                            binding.pagesEditText.error = getString(R.string.error_validation_pages_invalid)
                             return@setOnClickListener
                         }
                         val author = binding.authorEditText.text.toString().trim()
                         if (author.isEmpty()) {
-                            binding.authorEditText.error = "Введите автора"
+                            binding.authorEditText.error = getString(R.string.error_validation_author_empty)
                             return@setOnClickListener
                         }
-                        newItem = Book(UniqueIdGenerator.getUniqueId(), available, name, pages, author)
+                        Book(0, available, name, pages, author)
                     }
                     TYPE_NEWSPAPER -> {
                         val issueNumberStr = binding.issueNumberEditText.text.toString()
                         val issueNumber = issueNumberStr.toIntOrNull()
                         if (issueNumber == null || issueNumber <= 0) {
-                            binding.issueNumberEditText.error = "Введите корректный номер выпуска (> 0)"
+                            binding.issueNumberEditText.error = getString(R.string.error_validation_issue_invalid)
                             return@setOnClickListener
                         }
                         val monthInput = binding.monthEditText.text.toString().trim()
                         val selectedMonth = Month.entries.firstOrNull { it.displayName.equals(monthInput, ignoreCase = true) }
                         if (selectedMonth == null) {
-                            binding.monthEditText.error = "Неверный месяц (напр. 'Январь')"
+                            binding.monthEditText.error = getString(R.string.error_validation_month_invalid)
                             return@setOnClickListener
                         }
-                        newItem = Newspaper(UniqueIdGenerator.getUniqueId(), available, name, issueNumber, selectedMonth)
+                        Newspaper(0, available, name, issueNumber, selectedMonth)
                     }
                     TYPE_DISK -> {
                         val diskType = binding.diskTypeEditText.text.toString().trim()
                         if (diskType.isEmpty()) {
-                            binding.diskTypeEditText.error = "Введите тип диска"
+                            binding.diskTypeEditText.error = getString(R.string.error_validation_disktype_empty)
                             return@setOnClickListener
                         }
-                        newItem = Disk(UniqueIdGenerator.getUniqueId(), available, name, diskType)
+                        Disk(0, available, name, diskType)
                     }
                     else -> {
-                        Toast.makeText(context, "Ошибка: Неизвестный тип элемента", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, R.string.error_unknown_item_type, Toast.LENGTH_SHORT).show()
                         return@setOnClickListener
                     }
                 }
             } catch (e: NumberFormatException) {
-                Toast.makeText(context, "Ошибка ввода числовых данных", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.error_validation_number_format, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             } catch (e: Exception) {
-                Toast.makeText(context, "Произошла ошибка при проверке данных", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.error_validation_generic, Toast.LENGTH_SHORT).show()
+                binding.saveButton.isEnabled = true
                 return@setOnClickListener
             }
 
-            newItem?.let { itemToAdd ->
-                binding.saveButton.isEnabled = false
-                viewLifecycleOwner.lifecycleScope.launch {
-                    viewModel.addNewItem(itemToAdd)
+            binding.saveButton.isEnabled = false
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewModel.addNewItem(newItem)
+                viewModel.completeAddItem()
 
-                    viewModel.completeAddItem()
-
-                    if (!isTwoPaneMode()) {
-                        parentFragmentManager.popBackStack()
-                    }
+                if (!isTwoPaneMode()) {
+                    findNavController().popBackStack()
                 }
-            } ?: run {
-                Toast.makeText(context, "Ошибка: Не удалось создать элемент", Toast.LENGTH_SHORT).show()
-                binding.saveButton.isEnabled = true
             }
         }
     }
