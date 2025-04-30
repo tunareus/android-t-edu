@@ -32,8 +32,8 @@ class LibraryViewModel(
 
     companion object {
         const val PAGE_SIZE = 30
-        const val LOAD_MORE_COUNT = 15
-        const val PREFETCH_DISTANCE = 10
+        const val LOAD_MORE_COUNT = 8
+        const val PREFETCH_DISTANCE = 5
         const val MIN_SHIMMER_TIME_MS = 1000L
     }
 
