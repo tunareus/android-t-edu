@@ -16,8 +16,8 @@ import androidx.navigation.fragment.findNavController
 import com.example.myapplication.data.local.AppDatabase
 import com.example.myapplication.data.settings.SettingsRepository
 import com.example.myapplication.databinding.ActivityDetailBinding
-import kotlinx.coroutines.launch
 import com.example.myapplication.util.dpToPx
+import kotlinx.coroutines.launch
 
 class DetailFragment : Fragment() {
 
@@ -66,8 +66,7 @@ class DetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        val database = AppDatabase.getDatabase(requireContext().applicationContext, lifecycleScope)
+        val database = AppDatabase.getDatabase(requireContext().applicationContext, viewLifecycleOwner.lifecycleScope)
         val repository = LibraryRepository(database.libraryItemDao())
         val factory = LibraryViewModel.LibraryViewModelFactory(repository, settingsRepository)
         viewModel = ViewModelProvider(requireActivity(), factory)[LibraryViewModel::class.java]
@@ -81,9 +80,7 @@ class DetailFragment : Fragment() {
                 @Suppress("DEPRECATION")
                 it.getParcelable(ARG_ITEM)
             }
-            if (!editable && item != null) {
-                setupItemData(item)
-            } else if (editable && item != null) {
+            if (item != null) {
                 setupItemData(item)
             }
         } ?: if (editable) {

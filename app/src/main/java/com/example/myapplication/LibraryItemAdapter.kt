@@ -7,7 +7,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.databinding.ItemLibraryItemBinding
-import com.example.myapplication.util.dpToPx
 
 private const val VIEW_TYPE_ITEM = 0
 private const val VIEW_TYPE_LOADING_TOP = 1
@@ -31,6 +30,9 @@ class LibraryItemAdapter : ListAdapter<AdapterItem, RecyclerView.ViewHolder>(
         private val adapter: LibraryItemAdapter
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        private val elevationAvailablePx = itemView.resources.getDimension(R.dimen.library_item_elevation_available)
+        private val elevationUnavailablePx = itemView.resources.getDimension(R.dimen.library_item_elevation_unavailable)
+
         init {
             binding.cardView.setOnClickListener {
                 val adapterPos = bindingAdapterPosition
@@ -49,7 +51,6 @@ class LibraryItemAdapter : ListAdapter<AdapterItem, RecyclerView.ViewHolder>(
                 is Book -> R.drawable.ic_book
                 is Newspaper -> R.drawable.ic_newspaper
                 is Disk -> R.drawable.ic_disk
-                else -> R.drawable.ic_item
             }
             iconImageView.setImageResource(iconResId)
             nameTextView.text = item.name
@@ -61,9 +62,9 @@ class LibraryItemAdapter : ListAdapter<AdapterItem, RecyclerView.ViewHolder>(
             iconImageView.alpha = alpha
 
             cardView.elevation = if (item.available) {
-                root.context.dpToPx(10).toFloat()
+                elevationAvailablePx
             } else {
-                root.context.dpToPx(1).toFloat()
+                elevationUnavailablePx
             }
         }
     }

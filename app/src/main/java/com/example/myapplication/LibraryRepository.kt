@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import androidx.sqlite.db.SimpleSQLiteQuery
 import com.example.myapplication.data.local.dao.LibraryItemDao
 import com.example.myapplication.data.local.mapper.toDomain
 import com.example.myapplication.data.local.mapper.toEntity
@@ -18,16 +19,17 @@ class LibraryRepository(private val libraryItemDao: LibraryItemDao) {
         offset: Int,
         sortPreference: SortPreference
     ): List<LibraryItem> = withContext(Dispatchers.IO) {
+        val field = when (sortPreference.field) {
+            SortField.NAME -> "name"
+            SortField.DATE_ADDED -> "dateAdded"
+        }
+        val order = when (sortPreference.order) {
+            SortOrder.ASC -> "ASC"
+            SortOrder.DESC -> "DESC"
+        }
+        val query = "SELECT * FROM library_items ORDER BY $field $order LIMIT $limit OFFSET $offset"
         try {
-            val field = when (sortPreference.field) {
-                SortField.NAME -> "name"
-                SortField.DATE_ADDED -> "dateAdded"
-            }
-            val order = when (sortPreference.order) {
-                SortOrder.ASC -> "ASC"
-                SortOrder.DESC -> "DESC"
-            }
-            libraryItemDao.getPagedItems(limit, offset, field, order).map { it.toDomain() }
+            libraryItemDao.getPagedItemsRaw(SimpleSQLiteQuery(query)).map { it.toDomain() }
         } catch (e: Exception) {
             throw RepositoryLoadException("Failed to load items from database", e)
         }

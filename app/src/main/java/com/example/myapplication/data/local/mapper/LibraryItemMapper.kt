@@ -7,8 +7,6 @@ import com.example.myapplication.Month
 import com.example.myapplication.Newspaper
 import com.example.myapplication.data.local.model.ItemType
 import com.example.myapplication.data.local.model.LibraryItemEntity
-import java.lang.IllegalArgumentException
-
 
 fun LibraryItem.toEntity(id: Int? = null): LibraryItemEntity {
     val entityId = id ?: this.id.takeIf { it != 0 } ?: 0
@@ -27,7 +25,6 @@ fun LibraryItem.toEntity(id: Int? = null): LibraryItemEntity {
             id = entityId, available = this.available, name = this.name, type = ItemType.DISK, dateAdded = currentTime,
             pages = null, author = null, issueNumber = null, monthDisplayName = null, diskType = this.getDiskType()
         )
-        else -> throw IllegalArgumentException("Unknown LibraryItem subclass: ${this::class.java.name}")
     }
 }
 
