@@ -1,20 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">My Application</string>
+
     <string name="item_id">ID: %1$d</string>
-    <string name="item_click_text">Элемент с id %1$d</string>
-    <string name="recyclerview_desc">Список элементов</string>
-    <string name="add_button_text">Добавить</string>
-    <string name="icon_desc">Иконка книги</string>
+    <string name="icon_desc">Иконка элемента</string>
     <string name="name_hint">Название</string>
     <string name="pages_hint">Количество страниц</string>
     <string name="author_hint">Автор</string>
     <string name="disk_type_hint">Тип диска</string>
     <string name="issue_number_hint">Номер выпуска</string>
-    <string name="month_hint">Месяц</string>
+    <string name="month_hint">Месяц (напр. Январь)</string>
+    <string name="available_hint_editable">Доступен (Да/Нет)</string>
+    <string name="availability_status_hint">Статус доступности</string>
     <string name="save">Сохранить</string>
-    <string name="available_hint">Доступен</string>
-    <string name="error_loading_message">Ошибка: %1$s</string>
-    <string name="unknown_error">Неизвестная ошибка</string>
+    <string name="yes">Да</string>
+    <string name="no">Нет</string>
+
+    <string name="recyclerview_desc">Список элементов библиотеки</string>
+    <string name="add_button_text">Добавить</string>
     <string name="retry_button_text">Повторить</string>
+    <string name="empty_list_message">В библиотеке пока нет элементов</string>
+    <string name="sort_date_desc">Дата ↓</string>
+    <string name="sort_date_asc">Дата ↑</string>
+    <string name="sort_name_asc">Имя А-Я</string>
+    <string name="sort_name_desc">Имя Я-А</string>
+
+    <string name="dialog_add_item_title">Выберите тип элемента</string>
+    <string name="item_type_book">Книга</string>
+    <string name="item_type_newspaper">Газета</string>
+    <string name="item_type_disk">Диск</string>
+    <string name="error_loading_details">Ошибка загрузки деталей</string>
+    <string name="error_item_creation_failed">Ошибка: Не удалось создать элемент</string>
+    <string name="error_unknown_item_type">Ошибка: Неизвестный тип элемента</string>
+
+    <string name="error_validation_name_empty">Введите название</string>
+    <string name="error_validation_available_format">Введите \'Да\' или \'Нет\'</string>
+    <string name="error_validation_pages_invalid">Введите число страниц (> 0)</string>
+    <string name="error_validation_author_empty">Введите автора</string>
+    <string name="error_validation_issue_invalid">Введите номер выпуска (> 0)</string>
+    <string name="error_validation_month_invalid">Неверный месяц (напр. \'Январь\')</string>
+    <string name="error_validation_disktype_empty">Введите тип диска</string>
+    <string name="error_validation_number_format">Ошибка ввода числовых данных</string>
+    <string name="error_validation_generic">Произошла ошибка при проверке данных</string>
+
+    <string name="error_loading_message">Ошибка загрузки: %1$s</string>
+    <string name="unknown_error">Неизвестная ошибка</string>
+
 </resources>
