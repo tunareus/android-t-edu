@@ -3,7 +3,7 @@ package com.example.myapplication
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.example.myapplication.data.local.dao.LibraryItemDao
 import com.example.myapplication.data.local.mapper.toDomain
-import com.example.myapplication.data.local.mapper.toEntity
+import com.example.myapplication.data.local.model.LibraryItemEntity
 import com.example.myapplication.data.settings.SortField
 import com.example.myapplication.data.settings.SortOrder
 import com.example.myapplication.data.settings.SortPreference
@@ -35,9 +35,8 @@ class LibraryRepository(private val libraryItemDao: LibraryItemDao) {
         }
     }
 
-    suspend fun addItem(item: LibraryItem): Long = withContext(Dispatchers.IO) {
+    suspend fun addItem(entity: LibraryItemEntity): Long = withContext(Dispatchers.IO) {
         try {
-            val entity = item.toEntity(id = 0)
             libraryItemDao.insert(entity)
         } catch (e: Exception) {
             throw RepositoryLoadException("Failed to add item to database", e)
@@ -50,6 +49,22 @@ class LibraryRepository(private val libraryItemDao: LibraryItemDao) {
             return@withContext affectedRows > 0
         } catch (e: Exception) {
             throw RepositoryLoadException("Failed to remove item from database", e)
+        }
+    }
+
+    suspend fun findByIsbn(isbn: String): LibraryItem? = withContext(Dispatchers.IO) {
+        try {
+            libraryItemDao.findByIsbn(isbn)?.toDomain()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun findByNameAndAuthor(name: String, author: String): List<LibraryItem> = withContext(Dispatchers.IO) {
+        try {
+            libraryItemDao.findByNameAndAuthor(name, author).map { it.toDomain() }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 

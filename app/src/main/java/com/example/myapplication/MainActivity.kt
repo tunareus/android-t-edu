@@ -13,7 +13,6 @@ import com.example.myapplication.data.settings.SettingsRepository
 import com.example.myapplication.databinding.ActivityMainBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.lang.IllegalArgumentException
 
 class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
@@ -131,7 +130,7 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
                 if (isTwoPaneMode) {
                     when {
                         libraryViewModel.isAddingItem.value -> libraryViewModel.completeAddItem()
-                        libraryViewModel.selectedItem.value != null -> libraryViewModel.setSelectedItem(null)
+                        libraryViewModel.selectedItem.value != null -> libraryViewModel.setSelectedLocalItem(null)
                         else -> finish()
                     }
                 } else if (navController != null) {
@@ -139,16 +138,13 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
                         if (libraryViewModel.isAddingItem.value) {
                             libraryViewModel.completeAddItem()
                         } else if (libraryViewModel.selectedItem.value != null) {
-                            libraryViewModel.setSelectedItem(null)
+                            libraryViewModel.setSelectedLocalItem(null)
                         }
                         if (!navController.popBackStack()) {
                             finish()
                         }
                     } else {
-                        if (isEnabled) {
-                            isEnabled = false
-                            onBackPressedDispatcher.onBackPressed()
-                        } else {
+                        if (!navController.popBackStack()) {
                             finish()
                         }
                     }
@@ -160,6 +156,7 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
     }
 
     override fun onItemSelected(item: LibraryItem) {
+        libraryViewModel.setSelectedLocalItem(item)
         if (!isTwoPaneMode) {
             navigateToDetailFragment(editable = false, item = item)
         }
@@ -189,21 +186,16 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
     private fun navigateToDetailFragment(editable: Boolean, item: LibraryItem?, itemType: String? = null) {
         if (isTwoPaneMode) return
-
         val type = itemType ?: item?.let { getItemType(it) } ?: return
-
         val bundle = Bundle().apply {
             putBoolean("editable", editable)
             putString("item_type", type)
             item?.let { putParcelable("item", it) }
         }
-
         try {
             val navController = findNavController(R.id.nav_host_fragment)
             if (navController.currentDestination?.id == R.id.listFragment) {
                 navController.navigate(R.id.action_listFragment_to_detailFragment, bundle)
-            } else {
-                //
             }
         } catch (e: Exception) { //
         }
@@ -238,6 +230,5 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
         is Book -> DetailFragment.TYPE_BOOK
         is Newspaper -> DetailFragment.TYPE_NEWSPAPER
         is Disk -> DetailFragment.TYPE_DISK
-        else -> throw IllegalArgumentException("Unknown LibraryItem type: ${item::class.java.name}")
     }
 }

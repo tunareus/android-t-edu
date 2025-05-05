@@ -29,6 +29,12 @@ interface LibraryItemDao {
     @RawQuery
     suspend fun getPagedItemsRaw(query: SupportSQLiteQuery): List<LibraryItemEntity>
 
+    @Query("SELECT * FROM library_items WHERE isbn = :isbn LIMIT 1")
+    suspend fun findByIsbn(isbn: String): LibraryItemEntity?
+
+    @Query("SELECT * FROM library_items WHERE name = :name AND author = :author AND type = 'BOOK'")
+    suspend fun findByNameAndAuthor(name: String, author: String): List<LibraryItemEntity>
+
     @Query("DELETE FROM library_items")
     suspend fun deleteAll()
 }

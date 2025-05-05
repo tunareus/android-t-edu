@@ -273,7 +273,7 @@ class DetailFragment : Fragment() {
 
             binding.saveButton.isEnabled = false
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.addNewItem(newItem)
+                viewModel.addManuallyCreatedItem(newItem)
                 viewModel.completeAddItem()
 
                 if (!isTwoPaneMode()) {
