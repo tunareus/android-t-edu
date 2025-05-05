@@ -72,6 +72,12 @@ class ListFragment : Fragment() {
         observeViewModel()
     }
 
+    override fun onDestroyView() {
+        binding.recyclerView.adapter = null
+        _binding = null
+        super.onDestroyView()
+    }
+
     private fun setupViewModel() {
         val database = AppDatabase.getDatabase(requireContext().applicationContext, viewLifecycleOwner.lifecycleScope)
         val repository = LibraryRepository(database.libraryItemDao())
@@ -122,10 +128,12 @@ class ListFragment : Fragment() {
                 val lastVisible = layoutManager.findLastVisibleItemPosition()
                 val firstVisible = layoutManager.findFirstVisibleItemPosition()
 
-                if (dy > 0 && lastVisible >= totalItemCountInAdapter - 1 - LibraryViewModel.PREFETCH_DISTANCE) {
+                val prefetch = LibraryViewModel.PREFETCH_DISTANCE
+
+                if (dy > 0 && lastVisible >= totalItemCountInAdapter - 1 - prefetch) {
                     viewModel.loadMoreLocalItemsBottom()
                 }
-                if (dy < 0 && firstVisible <= LibraryViewModel.PREFETCH_DISTANCE) {
+                if (dy < 0 && firstVisible <= prefetch) {
                     viewModel.loadMoreLocalItemsTop()
                 }
             }
@@ -158,19 +166,6 @@ class ListFragment : Fragment() {
                 if (selectedPref != currentPref) viewModel.setSortPreference(selectedPref)
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-    }
-
-    private fun updateSpinnerSelection(preference: SortPreference) {
-        val position = when (preference.field) {
-            SortField.DATE_ADDED -> if (preference.order == SortOrder.DESC) 0 else 1
-            SortField.NAME -> if (preference.order == SortOrder.ASC) 2 else 3
-        }
-        if (binding.sortSpinner.selectedItemPosition != position) {
-            val listener = binding.sortSpinner.onItemSelectedListener
-            binding.sortSpinner.onItemSelectedListener = null
-            binding.sortSpinner.setSelection(position, false)
-            binding.sortSpinner.onItemSelectedListener = listener
         }
     }
 
@@ -246,7 +241,9 @@ class ListFragment : Fragment() {
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.toastMessage.collect { message ->
-                context?.let { Toast.makeText(it, message, Toast.LENGTH_SHORT).show() }
+                context?.let { ctx ->
+                    Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -258,8 +255,7 @@ class ListFragment : Fragment() {
         binding.googleSearchLayout.isVisible = !isLocalMode
         binding.addButton.isVisible = isLocalMode
 
-        binding.shimmerLayout.stopShimmer()
-        binding.shimmerLayout.isVisible = false
+        binding.shimmerLayout.stopShimmer(); binding.shimmerLayout.isVisible = false
         binding.errorLayout.isVisible = false
         binding.emptyLayout.isVisible = false
         binding.recyclerView.isVisible = false
@@ -273,7 +269,6 @@ class ListFragment : Fragment() {
         } else {
             binding.googleAuthorInput.text?.clear()
             binding.googleTitleInput.text?.clear()
-
             binding.recyclerView.adapter = googleBooksAdapter
             handleGoogleBooksUiState(viewModel.googleBooksState.value)
         }
@@ -281,8 +276,7 @@ class ListFragment : Fragment() {
 
     private fun handleLocalLibraryUiState(state: UiState) {
         if (_binding == null || viewModel.currentMode.value != AppMode.LOCAL_LIBRARY) return
-        binding.shimmerLayout.stopShimmer()
-        binding.shimmerLayout.isVisible = false
+        binding.shimmerLayout.stopShimmer(); binding.shimmerLayout.isVisible = false
         binding.errorLayout.isVisible = false
         binding.emptyLayout.isVisible = false
         binding.recyclerView.isVisible = false
@@ -310,43 +304,34 @@ class ListFragment : Fragment() {
         val isLoading = viewModel.uiState.value is UiState.InitialLoading || viewModel.paginationState.value != PaginationState.Idle
         val isError = viewModel.uiState.value is UiState.Error
 
-        if (isEmpty && !isLoading && !isError) {
-            binding.emptyLayout.isVisible = true
-            binding.recyclerView.isVisible = false
-        } else {
-            binding.emptyLayout.isVisible = false
-            if (!isLoading && !isError && !isEmpty) {
-                binding.recyclerView.isVisible = true
-            } else {
-                binding.recyclerView.isVisible = false
-            }
-        }
+        binding.emptyLayout.isVisible = isEmpty && !isLoading && !isError
+        binding.recyclerView.isVisible = !isEmpty && !isLoading && !isError
     }
+
 
     private fun handleGoogleBooksUiState(state: GoogleBooksUiState) {
         if (_binding == null || viewModel.currentMode.value != AppMode.GOOGLE_BOOKS) return
         binding.shimmerLayout.stopShimmer()
         binding.shimmerLayout.isVisible = state is GoogleBooksUiState.Loading
         binding.errorLayout.isVisible = state is GoogleBooksUiState.Error
-        binding.recyclerView.isVisible = state is GoogleBooksUiState.Success
+        val showList = state is GoogleBooksUiState.Success && state.books.isNotEmpty()
+        binding.recyclerView.isVisible = showList
+        binding.googleSearchLayout.isVisible = state is GoogleBooksUiState.Idle || (state is GoogleBooksUiState.Success && state.books.isEmpty()) || state is GoogleBooksUiState.Error
+
 
         when (state) {
             is GoogleBooksUiState.Loading -> binding.shimmerLayout.startShimmer()
             is GoogleBooksUiState.Success -> {
                 googleBooksAdapter.submitList(state.books)
-                binding.googleSearchLayout.isVisible = state.books.isEmpty()
-                binding.recyclerView.isVisible = state.books.isNotEmpty()
+                if (state.books.isEmpty() && (viewModel.googleSearchQueryAuthor.value.isNotEmpty() || viewModel.googleSearchQueryTitle.value.isNotEmpty())) {
+                    Toast.makeText(context, R.string.google_books_no_results, Toast.LENGTH_SHORT).show()
+                }
             }
             is GoogleBooksUiState.Error -> {
                 val errorMessage = state.exception.localizedMessage ?: state.exception.toString()
                 binding.errorTextView.text = getString(R.string.error_loading_message, errorMessage)
-                binding.googleSearchLayout.isVisible = true
-                binding.recyclerView.isVisible = false
             }
-            is GoogleBooksUiState.Idle -> {
-                binding.googleSearchLayout.isVisible = true
-                binding.recyclerView.isVisible = false
-                googleBooksAdapter.submitList(emptyList())
+            is GoogleBooksUiState.Idle -> { googleBooksAdapter.submitList(emptyList())
             }
         }
     }
@@ -356,9 +341,16 @@ class ListFragment : Fragment() {
         imm?.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
-    override fun onDestroyView() {
-        binding.recyclerView.adapter = null
-        _binding = null
-        super.onDestroyView()
+    private fun updateSpinnerSelection(preference: SortPreference) {
+        val position = when (preference.field) {
+            SortField.DATE_ADDED -> if (preference.order == SortOrder.DESC) 0 else 1
+            SortField.NAME -> if (preference.order == SortOrder.ASC) 2 else 3
+        }
+        if (binding.sortSpinner.selectedItemPosition != position) {
+            val listener = binding.sortSpinner.onItemSelectedListener
+            binding.sortSpinner.onItemSelectedListener = null
+            binding.sortSpinner.setSelection(position, false)
+            binding.sortSpinner.onItemSelectedListener = listener
+        }
     }
 }
