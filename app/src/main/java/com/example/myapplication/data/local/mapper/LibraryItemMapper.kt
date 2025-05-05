@@ -8,22 +8,25 @@ import com.example.myapplication.Newspaper
 import com.example.myapplication.data.local.model.ItemType
 import com.example.myapplication.data.local.model.LibraryItemEntity
 
-fun LibraryItem.toEntity(id: Int? = null): LibraryItemEntity {
+fun LibraryItem.toEntity(id: Int? = null, isbnValue: String? = null): LibraryItemEntity {
     val entityId = id ?: this.id.takeIf { it != 0 } ?: 0
     val currentTime = System.currentTimeMillis()
 
     return when (this) {
         is Book -> LibraryItemEntity(
             id = entityId, available = this.available, name = this.name, type = ItemType.BOOK, dateAdded = currentTime,
-            pages = this.pages, author = this.author, issueNumber = null, monthDisplayName = null, diskType = null
+            pages = this.pages, author = this.author, issueNumber = null, monthDisplayName = null, diskType = null,
+            isbn = isbnValue
         )
         is Newspaper -> LibraryItemEntity(
             id = entityId, available = this.available, name = this.name, type = ItemType.NEWSPAPER, dateAdded = currentTime,
-            pages = null, author = null, issueNumber = this.issueNumber, monthDisplayName = this.month.displayName, diskType = null
+            pages = null, author = null, issueNumber = this.issueNumber, monthDisplayName = this.month.displayName, diskType = null,
+            isbn = null
         )
         is Disk -> LibraryItemEntity(
             id = entityId, available = this.available, name = this.name, type = ItemType.DISK, dateAdded = currentTime,
-            pages = null, author = null, issueNumber = null, monthDisplayName = null, diskType = this.getDiskType()
+            pages = null, author = null, issueNumber = null, monthDisplayName = null, diskType = this.getDiskType(),
+            isbn = null
         )
     }
 }
