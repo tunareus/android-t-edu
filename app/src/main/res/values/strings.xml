@@ -46,4 +46,18 @@
     <string name="error_loading_message">Ошибка загрузки: %1$s</string>
     <string name="unknown_error">Неизвестная ошибка</string>
 
+    <string name="mode_local_library">Библиотека</string>
+    <string name="mode_google_books">Google Books</string>
+    <string name="google_search_author_hint">Автор (мин. 3 симв.)</string>
+    <string name="google_search_title_hint">Название (мин. 3 симв.)</string>
+    <string name="google_search_button">Поиск</string>
+    <string name="google_search_error_min_chars">Введите минимум 3 символа для автора или названия</string>
+    <string name="google_search_error_generic">Ошибка поиска книг: %1$s</string>
+    <string name="google_save_no_isbn">Невозможно сохранить книгу без ISBN</string>
+    <string name="google_save_already_exists">Книга \'%1$s\' уже есть в библиотеке.</string>
+    <string name="google_save_prepare_error">Не удалось подготовить книгу к сохранению.</string>
+    <string name="google_save_success">Книга \'%1$s\' сохранена.</string>
+    <string name="google_save_error">Ошибка сохранения книги: %1$s</string>
+    <string name="google_books_no_results">Книги по вашему запросу не найдены</string>
+
 </resources>
