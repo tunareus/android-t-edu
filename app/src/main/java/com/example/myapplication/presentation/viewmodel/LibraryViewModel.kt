@@ -13,9 +13,6 @@ import com.example.myapplication.domain.usecase.googlebooks.SaveGoogleBookToLoca
 import com.example.myapplication.domain.usecase.googlebooks.SearchGoogleBooksUseCase
 import com.example.myapplication.domain.usecase.library.AddLocalItemUseCase
 import com.example.myapplication.domain.usecase.library.DeleteLocalItemUseCase
-import com.example.myapplication.domain.usecase.library.FindLocalBookByIsbnUseCase
-import com.example.myapplication.domain.usecase.library.FindLocalBookByNameAndAuthorUseCase
-import com.example.myapplication.domain.usecase.library.GetLocalItemByIdUseCase
 import com.example.myapplication.domain.usecase.library.GetPagedLocalItemsUseCase
 import com.example.myapplication.domain.usecase.library.GetTotalLocalItemCountUseCase
 import com.example.myapplication.domain.usecase.settings.GetSortPreferenceUseCase
@@ -32,6 +29,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.IOException
+import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
 
@@ -58,15 +56,12 @@ sealed class PaginationState {
     data object LoadingAfter : PaginationState()
 }
 
-class LibraryViewModel(
+class LibraryViewModel @Inject constructor(
     application: Application,
     private val getPagedLocalItemsUseCase: GetPagedLocalItemsUseCase,
     private val getTotalLocalItemCountUseCase: GetTotalLocalItemCountUseCase,
     private val addLocalItemUseCase: AddLocalItemUseCase,
     private val deleteLocalItemUseCase: DeleteLocalItemUseCase,
-    private val getLocalItemByIdUseCase: GetLocalItemByIdUseCase,
-    private val findLocalBookByIsbnUseCase: FindLocalBookByIsbnUseCase,
-    private val findLocalBookByNameAndAuthorUseCase: FindLocalBookByNameAndAuthorUseCase,
     private val searchGoogleBooksUseCase: SearchGoogleBooksUseCase,
     private val saveGoogleBookToLocalLibraryUseCase: SaveGoogleBookToLocalLibraryUseCase,
     private val getSortPreferenceUseCase: GetSortPreferenceUseCase,

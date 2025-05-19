@@ -21,9 +21,9 @@ import com.example.myapplication.presentation.ui.fragment.DetailFragment
 import com.example.myapplication.presentation.ui.fragment.EmptyDetailFragment
 import com.example.myapplication.presentation.ui.fragment.ListFragment
 import com.example.myapplication.presentation.viewmodel.LibraryViewModel
-import com.example.myapplication.presentation.viewmodel.LibraryViewModelFactory
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
 
@@ -31,26 +31,15 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
     private var isTwoPaneMode = false
     private var navController: NavController? = null
 
+    @Inject
+    lateinit var viewModelFactory: ViewModelProvider.Factory
+
     private val libraryViewModel: LibraryViewModel by lazy {
-        val myApplication = application as MyApplication
-        val factory = LibraryViewModelFactory(
-            myApplication,
-            myApplication.getPagedLocalItemsUseCase,
-            myApplication.getTotalLocalItemCountUseCase,
-            myApplication.addLocalItemUseCase,
-            myApplication.deleteLocalItemUseCase,
-            myApplication.getLocalItemByIdUseCase,
-            myApplication.findLocalBookByIsbnUseCase,
-            myApplication.findLocalBookByNameAndAuthorUseCase,
-            myApplication.searchGoogleBooksUseCase,
-            myApplication.saveGoogleBookToLocalLibraryUseCase,
-            myApplication.getSortPreferenceUseCase,
-            myApplication.setSortPreferenceUseCase
-        )
-        ViewModelProvider(this, factory)[LibraryViewModel::class.java]
+        ViewModelProvider(this, viewModelFactory)[LibraryViewModel::class.java]
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        (application as MyApplication).appComponent.inject(this)
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
         isTwoPaneMode = binding.detailContainer != null
@@ -203,7 +192,7 @@ class MainActivity : AppCompatActivity(), ListFragment.OnItemSelectedListener {
             itemType = typeForFragment,
             item = item
         )
-        supportFragmentManager.commit { //
+        supportFragmentManager.commit {
             replace(R.id.detailContainer, fragment, tag)
         }
     }
