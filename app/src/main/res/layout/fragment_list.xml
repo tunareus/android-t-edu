@@ -136,6 +136,9 @@
                     <include layout="@layout/item_placeholder"/>
                     <include layout="@layout/item_placeholder"/>
                     <include layout="@layout/item_placeholder"/>
+                    <include layout="@layout/item_placeholder"/>
+                    <include layout="@layout/item_placeholder"/>
+                    <include layout="@layout/item_placeholder"/>
                 </LinearLayout>
             </ScrollView>
         </com.facebook.shimmer.ShimmerFrameLayout>

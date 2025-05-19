@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">My Application</string>
 
@@ -59,5 +58,27 @@
     <string name="google_save_success">Книга \'%1$s\' сохранена.</string>
     <string name="google_save_error">Ошибка сохранения книги: %1$s</string>
     <string name="google_books_no_results">Книги по вашему запросу не найдены</string>
+
+    <string name="details_fragment_title_default">Детали</string>
+    <string name="error_loading_settings">Ошибка загрузки настроек</string>
+    <string name="error_saving_settings">Ошибка сохранения настроек</string>
+    <string name="item_added_success">Элемент \'%1$s\' добавлен.</string>
+    <string name="item_deleted_success">Элемент \'%1$s\' удален.</string>
+    <string name="item_delete_not_found">Не удалось удалить \'%1$s\'. Элемент не найден.</string>
+    <string name="google_save_already_exists_detailed">Книга \'%1$s\' уже в библиотеке: %2$s</string>
+    <string name="add_item_title_prefix">Добавить</string>
+    <string name="view_item_title">Просмотр</string>
+
+    <string name="error_database_operation_failed">Ошибка при работе с базой данных.</string>
+    <string name="error_network_connection">Ошибка сетевого подключения. Проверьте интернет.</string>
+    <string name="error_server_communication">Ошибка связи с сервером (код: %1$d).</string>
+    <string name="error_io_general">Произошла ошибка ввода-вывода.</string>
+    <string name="error_loading_data">Не удалось загрузить данные.</string>
+    <string name="google_search_error_generic_vm">При поиске книг произошла ошибка.</string>
+    <string name="google_save_error_generic_vm">Не удалось сохранить книгу.</string>
+
+    <string name="error_loading_more_data">Ошибка при загрузке дополнительных данных.</string>
+    <string name="error_adding_item">Не удалось добавить элемент.</string>
+    <string name="error_deleting_item">Не удалось удалить элемент.</string>
 
 </resources>
