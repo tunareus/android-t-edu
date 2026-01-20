@@ -32,17 +32,21 @@ import com.example.myapplication.presentation.ui.adapter.LibraryItemAdapter
 import com.example.myapplication.presentation.viewmodel.AppMode
 import com.example.myapplication.presentation.viewmodel.GoogleBooksUiState
 import com.example.myapplication.presentation.viewmodel.LibraryViewModel
-import com.example.myapplication.presentation.viewmodel.LibraryViewModelFactory
 import com.example.myapplication.presentation.viewmodel.PaginationState
 import com.example.myapplication.presentation.viewmodel.UiState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 class ListFragment : Fragment() {
 
     private var _binding: FragmentListBinding? = null
     private val binding get() = _binding!!
+
+    @Inject
+    lateinit var viewModelFactory: ViewModelProvider.Factory
+
     private lateinit var viewModel: LibraryViewModel
     private lateinit var localAdapter: LibraryItemAdapter
     private lateinit var googleBooksAdapter: GoogleBooksAdapter
@@ -55,6 +59,7 @@ class ListFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
+        (requireActivity().application as MyApplication).appComponent.inject(this)
         listener = context as? OnItemSelectedListener
     }
 
@@ -70,7 +75,8 @@ class ListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupViewModel()
+        viewModel = ViewModelProvider(requireActivity(), viewModelFactory)[LibraryViewModel::class.java]
+
         setupAdapters()
         setupRecyclerView()
         setupModeSwitcher()
@@ -84,25 +90,6 @@ class ListFragment : Fragment() {
         binding.recyclerView.adapter = null
         _binding = null
         super.onDestroyView()
-    }
-
-    private fun setupViewModel() {
-        val myApplication = requireActivity().application as MyApplication
-        val factory = LibraryViewModelFactory(
-            myApplication,
-            myApplication.getPagedLocalItemsUseCase,
-            myApplication.getTotalLocalItemCountUseCase,
-            myApplication.addLocalItemUseCase,
-            myApplication.deleteLocalItemUseCase,
-            myApplication.getLocalItemByIdUseCase,
-            myApplication.findLocalBookByIsbnUseCase,
-            myApplication.findLocalBookByNameAndAuthorUseCase,
-            myApplication.searchGoogleBooksUseCase,
-            myApplication.saveGoogleBookToLocalLibraryUseCase,
-            myApplication.getSortPreferenceUseCase,
-            myApplication.setSortPreferenceUseCase
-        )
-        viewModel = ViewModelProvider(requireActivity(), factory)[LibraryViewModel::class.java]
     }
 
     private fun setupAdapters() {

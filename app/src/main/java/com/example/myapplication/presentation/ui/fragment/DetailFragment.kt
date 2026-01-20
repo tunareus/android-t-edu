@@ -1,5 +1,6 @@
 package com.example.myapplication.presentation.ui.fragment
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -23,8 +24,8 @@ import com.example.myapplication.domain.model.Month
 import com.example.myapplication.domain.model.Newspaper
 import com.example.myapplication.presentation.util.dpToPx
 import com.example.myapplication.presentation.viewmodel.LibraryViewModel
-import com.example.myapplication.presentation.viewmodel.LibraryViewModelFactory
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 class DetailFragment : Fragment() {
 
@@ -51,9 +52,17 @@ class DetailFragment : Fragment() {
     private var _binding: ActivityDetailBinding? = null
     private val binding get() = _binding!!
 
+    @Inject
+    lateinit var viewModelFactory: ViewModelProvider.Factory
+
     private var isViewEditable: Boolean = false
     private lateinit var currentViewItemType: String
     private lateinit var viewModel: LibraryViewModel
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        (requireActivity().application as MyApplication).appComponent.inject(this)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -65,22 +74,7 @@ class DetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val myApplication = requireActivity().application as MyApplication
-        val factory = LibraryViewModelFactory(
-            myApplication,
-            myApplication.getPagedLocalItemsUseCase,
-            myApplication.getTotalLocalItemCountUseCase,
-            myApplication.addLocalItemUseCase,
-            myApplication.deleteLocalItemUseCase,
-            myApplication.getLocalItemByIdUseCase,
-            myApplication.findLocalBookByIsbnUseCase,
-            myApplication.findLocalBookByNameAndAuthorUseCase,
-            myApplication.searchGoogleBooksUseCase,
-            myApplication.saveGoogleBookToLocalLibraryUseCase,
-            myApplication.getSortPreferenceUseCase,
-            myApplication.setSortPreferenceUseCase
-        )
-        viewModel = ViewModelProvider(requireActivity(), factory)[LibraryViewModel::class.java]
+        viewModel = ViewModelProvider(requireActivity(), viewModelFactory)[LibraryViewModel::class.java]
 
         arguments?.let { args ->
             isViewEditable = args.getBoolean(ARG_EDITABLE, false)
